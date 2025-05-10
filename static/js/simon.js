@@ -27,6 +27,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const txidDisplay = document.getElementById('txid');
     const simonBoard = document.getElementById('simon-board');
     
+    // Asegurarse de que los elementos existan antes de usarlos
+    if (!usernameDisplay) {
+        console.error('Elemento username-display no encontrado');
+    } else {
+        console.log('Elemento username-display encontrado:', usernameDisplay);
+    }
+    
+    if (!balanceDisplay) {
+        console.error('Elemento balance-display no encontrado');
+    } else {
+        console.log('Elemento balance-display encontrado:', balanceDisplay);
+    }
+    
     // Exportar elementos importantes para acceso global
     window.usernameDisplay = usernameDisplay;
     window.balanceDisplay = balanceDisplay;
@@ -439,6 +452,49 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Todo listo para iniciar el juego
+            
+            // SOLICIÓN DIRECTA: Intentar establecer el nombre de usuario de diferentes maneras
+            console.log('Intento forzar nombre de usuario:');
+            
+            // Obtener el nombre de usuario directamente
+            try {
+                // Intento 1: Desde sessionStorage
+                const sessionData = JSON.parse(sessionStorage.getItem('piUserData') || '{}');
+                if (sessionData && sessionData.username) {
+                    if (usernameDisplay) {
+                        usernameDisplay.textContent = sessionData.username;
+                        console.log('Nombre de usuario establecido desde sessionStorage:', sessionData.username);
+                    }
+                }
+                
+                // Intento 2: Desde localStorage
+                const localData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                if (localData && localData.username) {
+                    if (usernameDisplay) {
+                        usernameDisplay.textContent = localData.username;
+                        console.log('Nombre de usuario establecido desde localStorage:', localData.username);
+                    }
+                }
+                
+                // Intento 3: Si aún no hay nombre, intentar obtenerlo de la autenticación
+                if (!usernameDisplay.textContent && auth && auth.user && auth.user.username) {
+                    usernameDisplay.textContent = auth.user.username;
+                    console.log('Nombre de usuario establecido desde auth:', auth.user.username);
+                }
+                
+                // Intento 4: Establecer un valor por defecto si todo lo demás falla
+                if (!usernameDisplay.textContent) {
+                    usernameDisplay.textContent = 'Pioneer';
+                    console.log('Establecido nombre de usuario por defecto: Pioneer');
+                }
+            } catch (userError) {
+                console.error('Error al intentar establecer nombre de usuario:', userError);
+                // Establecer un valor por defecto si hay un error
+                if (usernameDisplay) {
+                    usernameDisplay.textContent = 'Pioneer';
+                    console.log('Establecido nombre de usuario por defecto debido a error');
+                }
+            }
         } catch (error) {
             console.error('Error al inicializar el juego:', error);
             alert('Error al iniciar el juego. Por favor, intenta de nuevo.');
@@ -448,6 +504,38 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Iniciar el juego
     initGame();
+    
+    // Función auxiliar para actualizar la interfaz de usuario con el nombre y balance
+    function updateUserInterface() {
+        // Intentar obtener datos del usuario desde localStorage
+        try {
+            const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+            
+            // Actualizar nombre de usuario si está disponible
+            if (userData && userData.username && usernameDisplay) {
+                usernameDisplay.textContent = userData.username;
+                console.log('UI actualizada: nombre de usuario =', userData.username);
+            } else if (usernameDisplay) {
+                // Establecer un valor por defecto
+                usernameDisplay.textContent = 'Pioneer';
+                console.log('UI actualizada: nombre de usuario por defecto = Pioneer');
+            }
+            
+            // Actualizar balance si está disponible
+            if (userData && userData.balance && balanceDisplay) {
+                balanceDisplay.textContent = userData.balance;
+                console.log('UI actualizada: balance =', userData.balance);
+            }
+        } catch (error) {
+            console.error('Error al actualizar la interfaz de usuario:', error);
+        }
+    }
+    
+    // Ejecutar inmediatamente para asegurar que la UI tenga datos
+    updateUserInterface();
+    
+    // Programar actualizaciones periódicas de la UI
+    setInterval(updateUserInterface, 2000); // Cada 2 segundos
     
     // Añadir efecto de vibración al juego para dispositivos móviles
     if (navigator.vibrate) {

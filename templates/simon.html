@@ -98,5 +98,36 @@
     
     <!-- Script actualizado para el juego Simon -->
     <script src="/static/js/simon.js"></script>
+    
+    <!-- Script adicional para asegurar que se muestre el nombre de usuario -->
+    <script>
+        // Ejecutar después de que todo se haya cargado
+        window.addEventListener('load', function() {
+            // Verificar si el nombre de usuario está vacío después de 3 segundos
+            setTimeout(function() {
+                var usernameDisplay = document.getElementById('username-display');
+                if (usernameDisplay && (!usernameDisplay.textContent || usernameDisplay.textContent.trim() === '')) {
+                    console.log('Nombre de usuario no detectado, estableciendo valor de respaldo...');
+                    
+                    // Intentar obtener de localStorage primero
+                    try {
+                        var userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                        if (userData && userData.username) {
+                            usernameDisplay.textContent = userData.username;
+                            console.log('Nombre establecido desde localStorage en script de respaldo');
+                        } else {
+                            // Si no hay datos en localStorage, establecer un valor predeterminado
+                            usernameDisplay.textContent = 'Pioneer';
+                            console.log('Nombre establecido como Pioneer en script de respaldo');
+                        }
+                    } catch (e) {
+                        // En caso de error, establecer un valor predeterminado
+                        usernameDisplay.textContent = 'Pioneer';
+                        console.log('Error en script de respaldo, nombre establecido como Pioneer');
+                    }
+                }
+            }, 3000); // Verificar después de 3 segundos
+        });
+    </script>
 </body>
 </html>
