@@ -46,6 +46,11 @@ def after_request(response):
 def index():
     return render_template('index.html')
 
+@app.route('/simon')
+def simon_game():
+    """Ruta para el juego Simon Dice"""
+    return render_template('simon.html')
+
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
@@ -232,6 +237,28 @@ def payment_error():
     except Exception as e:
         logger.error(f'Error handling payment error: {str(e)}')
         return jsonify({'error': f'Error handling payment error: {str(e)}'}), 500
+
+# Rutas para el juego Simon Dice
+@app.route('/api/scores', methods=['POST'])
+def save_score():
+    """Guardar puntuación del juego (para futura funcionalidad)"""
+    try:
+        username = request.json.get('username')
+        score = request.json.get('score')
+        
+        if not username or score is None:
+            return jsonify({'error': 'Missing username or score'}), 400
+        
+        logger.info(f'Saving score for {username}: {score}')
+        
+        # Aquí podrías implementar lógica para guardar puntuaciones en una base de datos
+        # Por ahora, solo registramos en el log
+        
+        return jsonify({'status': 'success', 'message': 'Score saved'})
+    
+    except Exception as e:
+        logger.error(f'Error saving score: {str(e)}')
+        return jsonify({'error': f'Error saving score: {str(e)}'}), 500
 
 if __name__ == '__main__':
     logger.info('Starting Pi Network Basic App')

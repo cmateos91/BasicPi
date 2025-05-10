@@ -1,0 +1,490 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --green-color: #00e676;
+    --red-color: #ff1744;
+    --yellow-color: #ffea00;
+    --blue-color: #2979ff;
+    --purple-main: #8c52ff;
+    --dark-bg: #121212;
+    --light-text: #f8f8f8;
+    --board-size: 340px;
+    --control-size: 130px;
+    --glow: 0 0 15px 2px;
+}
+
+body {
+    font-family: 'Quicksand', sans-serif;
+    background-color: var(--dark-bg);
+    color: var(--light-text);
+    padding: 20px;
+    position: relative;
+    overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Efecto retro en el fondo */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15),
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Efecto de rejilla */
+body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        linear-gradient(90deg, rgba(0,0,128,0.07) 1px, transparent 1px),
+        linear-gradient(rgba(0,0,128,0.07) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+.header-section {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+h1 {
+    font-family: 'Press Start 2P', cursive;
+    color: var(--purple-main);
+    text-shadow: 0 0 10px rgba(140, 82, 255, 0.6);
+    margin-bottom: 30px;
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+    animation: textGlow 2s infinite alternate;
+}
+
+@keyframes textGlow {
+    from { text-shadow: 0 0 5px rgba(140, 82, 255, 0.6); }
+    to { text-shadow: 0 0 15px rgba(140, 82, 255, 0.8), 0 0 20px rgba(140, 82, 255, 0.5); }
+}
+
+.user-info-bar {
+    display: flex;
+    justify-content: space-between;
+    background: linear-gradient(90deg, rgba(119, 66, 225, 0.8), rgba(140, 82, 255, 0.8));
+    color: white;
+    padding: 12px 20px;
+    border-radius: 50px;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    margin: 0 auto 20px;
+    max-width: 400px;
+    font-size: 0.9rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.user-info-bar::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    animation: shine 3s infinite;
+}
+
+@keyframes shine {
+    to { left: 100%; }
+}
+
+.game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+.simon-container {
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.simon-board {
+    width: var(--board-size);
+    height: var(--board-size);
+    border-radius: 50%;
+    background-color: #333;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 10px;
+    padding: 10px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+    position: relative;
+    transform: rotate(45deg);
+    transition: transform 0.3s ease;
+}
+
+.simon-board:hover {
+    transform: rotate(45deg) scale(1.02);
+}
+
+.simon-button {
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+    transition: opacity 0.2s, transform 0.1s;
+    opacity: 0.6;
+    transform-origin: center;
+}
+
+.simon-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.simon-button:hover::before {
+    opacity: 0.5;
+}
+
+.simon-button.active {
+    opacity: 1;
+    transform: scale(0.98);
+}
+
+.simon-button.active::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    animation: buttonPulse 0.5s;
+}
+
+@keyframes buttonPulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+.simon-button.green {
+    background-color: var(--green-color);
+    border-top-left-radius: 100%;
+}
+
+.simon-button.green.active {
+    box-shadow: var(--glow) var(--green-color);
+}
+
+.simon-button.red {
+    background-color: var(--red-color);
+    border-top-right-radius: 100%;
+}
+
+.simon-button.red.active {
+    box-shadow: var(--glow) var(--red-color);
+}
+
+.simon-button.yellow {
+    background-color: var(--yellow-color);
+    border-bottom-left-radius: 100%;
+}
+
+.simon-button.yellow.active {
+    box-shadow: var(--glow) var(--yellow-color);
+}
+
+.simon-button.blue {
+    background-color: var(--blue-color);
+    border-bottom-right-radius: 100%;
+}
+
+.simon-button.blue.active {
+    box-shadow: var(--glow) var(--blue-color);
+}
+
+.simon-controls {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    background: linear-gradient(135deg, #222, #444);
+    border-radius: 50%;
+    width: var(--control-size);
+    height: var(--control-size);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    border: 5px solid #333;
+    z-index: 2;
+}
+
+.controls-title {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.score-display {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 24px;
+    font-weight: bold;
+    color: #ff5252;
+    margin-bottom: 12px;
+    text-shadow: 0 0 5px rgba(255, 82, 82, 0.7);
+}
+
+.start-button {
+    background: linear-gradient(to bottom, var(--purple-main), #7442e1);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: 'Press Start 2P', cursive;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 0 #5d35c5;
+    transform: translateY(-2px);
+}
+
+.start-button:hover {
+    background: linear-gradient(to bottom, #7442e1, #6437c3);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 0 #5d35c5;
+}
+
+.start-button:active {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 #5d35c5;
+}
+
+.game-info {
+    background: rgba(30, 30, 40, 0.7);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(140, 82, 255, 0.3);
+    max-width: 500px;
+    width: 100%;
+}
+
+.game-info h5 {
+    color: var(--purple-main);
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+}
+
+.game-info ol {
+    padding-left: 25px;
+}
+
+.game-info li {
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn {
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+    border: none;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-warning {
+    background: linear-gradient(to bottom, #f9a825, #f57f17);
+    color: white;
+    box-shadow: 0 4px 0 #c75b12;
+    transform: translateY(-2px);
+}
+
+.btn-warning:hover {
+    background: linear-gradient(to bottom, #f57f17, #e65100);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 0 #c75b12;
+}
+
+.btn-warning:active {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 #c75b12;
+}
+
+.btn-success {
+    background: linear-gradient(to bottom, #00c853, #00a043);
+    color: white;
+    box-shadow: 0 4px 0 #007e33;
+    transform: translateY(-2px);
+}
+
+.btn-success:hover {
+    background: linear-gradient(to bottom, #00a043, #007e33);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 0 #007e33;
+}
+
+.btn-success:active {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 #007e33;
+}
+
+#paymentResult {
+    background: rgba(30, 30, 40, 0.7);
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(140, 82, 255, 0.3);
+    max-width: 500px;
+    width: 100%;
+}
+
+.alert-info {
+    background: rgba(25, 118, 210, 0.15);
+    border-left: 4px solid #1976d2;
+    padding: 10px 15px;
+    border-radius: 5px;
+}
+
+.alert-info h6 {
+    margin: 8px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+/* Game over effect */
+.game-over {
+    animation: gameOverFlash 0.5s;
+}
+
+@keyframes gameOverFlash {
+    0%, 50% { background-color: rgba(255, 0, 0, 0.3); }
+    100% { background-color: transparent; }
+}
+
+/* Particle effects for successful sequence */
+.particle {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: particleFade 1s forwards;
+}
+
+@keyframes particleFade {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
+
+/* Responsive design */
+@media (max-width: 576px) {
+    :root {
+        --board-size: 280px;
+        --control-size: 110px;
+    }
+    
+    h1 {
+        font-size: 1.4rem;
+    }
+    
+    .controls-title {
+        font-size: 14px;
+    }
+    
+    .score-display {
+        font-size: 20px;
+    }
+    
+    .start-button {
+        font-size: 12px;
+        padding: 5px 12px;
+    }
+    
+    .user-info-bar {
+        padding: 10px 15px;
+        font-size: 0.8rem;
+    }
+    
+    .game-info h5 {
+        font-size: 0.8rem;
+    }
+    
+    .game-info li {
+        font-size: 0.85rem;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+    }
+}
+
+/* Animación adicional para celebración al completar una secuencia correcta */
+@keyframes celebrate {
+    0% { transform: rotate(45deg) scale(1); }
+    50% { transform: rotate(45deg) scale(1.05); }
+    100% { transform: rotate(45deg) scale(1); }
+}
+
+.celebrate {
+    animation: celebrate 0.5s;
+}

@@ -1,0 +1,369 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --purple-main: #8c52ff;
+    --dark-bg: #121212;
+    --light-text: #f8f8f8;
+}
+
+body {
+    font-family: 'Quicksand', sans-serif;
+    background-color: var(--dark-bg);
+    color: var(--light-text);
+    padding: 20px;
+    overflow-x: hidden;
+    min-height: 100vh;
+}
+
+/* Efecto retro en el fondo */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15),
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Efecto de rejilla */
+body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        linear-gradient(90deg, rgba(0,0,128,0.07) 1px, transparent 1px),
+        linear-gradient(rgba(0,0,128,0.07) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+h1 {
+    font-family: 'Press Start 2P', cursive;
+    color: var(--purple-main);
+    text-shadow: 0 0 10px rgba(140, 82, 255, 0.6);
+    margin-bottom: 30px;
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+    text-align: center;
+    animation: textGlow 2s infinite alternate;
+}
+
+@keyframes textGlow {
+    from { text-shadow: 0 0 5px rgba(140, 82, 255, 0.6); }
+    to { text-shadow: 0 0 15px rgba(140, 82, 255, 0.8), 0 0 20px rgba(140, 82, 255, 0.5); }
+}
+
+.card {
+    background: rgba(30, 30, 40, 0.7) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3) !important;
+    backdrop-filter: blur(5px) !important;
+    border: 1px solid rgba(140, 82, 255, 0.3) !important;
+    overflow: hidden;
+    margin-top: 20px;
+    position: relative;
+}
+
+.card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--purple-main), #7442e1, var(--purple-main));
+    background-size: 200% 100%;
+    animation: gradientBorder 3s linear infinite;
+}
+
+@keyframes gradientBorder {
+    0% { background-position: 0% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.card-title {
+    color: var(--purple-main) !important;
+    font-weight: bold !important;
+    font-family: 'Press Start 2P', cursive !important;
+    font-size: 1.1rem !important;
+    margin-bottom: 15px !important;
+}
+
+.card-text {
+    color: var(--light-text) !important;
+    font-size: 1rem !important;
+    line-height: 1.6 !important;
+    margin-bottom: 20px !important;
+}
+
+.btn-primary {
+    background: linear-gradient(to bottom, var(--purple-main), #7442e1) !important;
+    border: none !important;
+    border-radius: 50px !important;
+    padding: 10px 25px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 0 #5d35c5 !important;
+    transform: translateY(-2px) !important;
+    transition: all 0.2s !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(to bottom, #7442e1, #6437c3) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 3px 0 #5d35c5 !important;
+}
+
+.btn-primary:active {
+    transform: translateY(2px) !important;
+    box-shadow: 0 0 0 #5d35c5 !important;
+}
+
+.btn-primary::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(45deg);
+    transition: all 0.3s;
+    opacity: 0;
+}
+
+.btn-primary:hover::after {
+    opacity: 1;
+    transform: rotate(45deg) translateY(-10%);
+}
+
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#loadingIndicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+#loadingIndicator p {
+    margin: 0;
+    font-weight: 500;
+}
+
+.game-description {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    border-radius: 10px;
+    background: rgba(30, 30, 40, 0.5);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(140, 82, 255, 0.2);
+}
+
+.game-description h4 {
+    font-family: 'Press Start 2P', cursive;
+    color: var(--purple-main);
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    text-shadow: 0 0 5px rgba(140, 82, 255, 0.4);
+}
+
+.game-description p {
+    color: var(--light-text);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+/* Añade partículas flotantes en el fondo */
+.particle-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.particle {
+    position: absolute;
+    display: block;
+    pointer-events: none;
+    background-color: rgba(140, 82, 255, 0.2);
+    border-radius: 50%;
+    animation: float 15s infinite ease-in-out;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-1000px) rotate(720deg);
+        opacity: 0;
+    }
+}
+
+/* Logos flotantes de Pi en el fondo */
+.pi-logo {
+    position: absolute;
+    color: rgba(140, 82, 255, 0.1);
+    font-size: 3rem;
+    pointer-events: none;
+    animation: floatLogo 20s infinite linear;
+    font-family: 'Press Start 2P', cursive;
+}
+
+@keyframes floatLogo {
+    0% {
+        transform: rotate(0deg) translateY(0);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.1;
+    }
+    90% {
+        opacity: 0.1;
+    }
+    100% {
+        transform: rotate(360deg) translateY(-100vh);
+        opacity: 0;
+    }
+}
+
+/* Efectos de neón para el título del juego */
+.neon-sign {
+    position: relative;
+    font-family: 'Press Start 2P', cursive;
+    text-transform: uppercase;
+    text-align: center;
+    margin: 20px 0 40px;
+}
+
+.neon-sign h2 {
+    color: #fff;
+    text-shadow: 
+        0 0 5px #fff,
+        0 0 10px #fff,
+        0 0 15px var(--purple-main),
+        0 0 20px var(--purple-main),
+        0 0 30px var(--purple-main),
+        0 0 40px var(--purple-main);
+    animation: neonPulse 1.5s infinite alternate;
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+}
+
+@keyframes neonPulse {
+    0%, 18%, 22%, 25%, 53%, 57%, 100% {
+        text-shadow:
+            0 0 5px #fff,
+            0 0 10px #fff,
+            0 0 15px var(--purple-main),
+            0 0 20px var(--purple-main),
+            0 0 30px var(--purple-main),
+            0 0 40px var(--purple-main);
+    }
+    20%, 24%, 55% {
+        text-shadow: none;
+    }
+}
+
+/* Efectos de color en degradado para algunos textos */
+.rainbow-text {
+    background-image: linear-gradient(
+        90deg, 
+        #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee
+    );
+    background-size: 400% 400%;
+    color: transparent;
+    background-clip: text;
+    -webkit-background-clip: text;
+    animation: rainbow 8s linear infinite;
+}
+
+@keyframes rainbow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+}
+
+/* Diseño responsivo */
+@media (max-width: 576px) {
+    h1 {
+        font-size: 1.4rem;
+    }
+    
+    .card-title {
+        font-size: 0.9rem !important;
+    }
+    
+    .game-description h4 {
+        font-size: 1rem;
+    }
+    
+    .neon-sign h2 {
+        font-size: 1.3rem;
+    }
+}
+
+/* Adaptaciones para pantallas más pequeñas */
+@media (max-width: 400px) {
+    h1 {
+        font-size: 1.2rem;
+    }
+    
+    .card-title {
+        font-size: 0.8rem !important;
+    }
+    
+    .game-description h4 {
+        font-size: 0.9rem;
+    }
+    
+    .neon-sign h2 {
+        font-size: 1.1rem;
+    }
+    
+    .btn-primary {
+        padding: 8px 20px !important;
+        font-size: 0.9rem !important;
+    }
+}

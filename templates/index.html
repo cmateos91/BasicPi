@@ -3,46 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pi Network Basic App</title>
+    <title>Simon Dice - Pi Network</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            padding: 20px;
-        }
-        .card {
-            margin-top: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="/static/css/login.css" rel="stylesheet">
 </head>
 <body>
+    <!-- Partículas de fondo -->
+    <div class="particle-container" id="particles"></div>
+
     <div class="container">
-        <h1 class="text-center mb-4">Pi Network Basic App</h1>
+        <h1>Simon Dice - Pi Network</h1>
+        
+        <div class="neon-sign">
+            <h2><i class="fas fa-gamepad"></i> Juego Retro</h2>
+        </div>
         
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Información del Usuario</h5>
+                <h5 class="card-title">¡Bienvenido!</h5>
+                <p class="card-text">Conéctate con Pi Network para jugar al clásico juego Simon Dice con un estilo retro-moderno y competir por puntos.</p>
                 <div class="mb-3">
                     <button id="connectBtn" class="btn btn-primary w-100">
-                        Conectar con Pi Network (Sandbox)
+                        <i class="fas fa-plug"></i> Conectar con Pi Network (Sandbox)
                     </button>
                 </div>
                 
-                <div id="userInfo" style="display: none;">
-                    <h6>Usuario: <span id="username"></span></h6>
-                    <h6>Balance: <span id="balance"></span></h6>
-                    <div class="mt-3">
-                        <button id="paymentBtn" class="btn btn-success w-100">
-                            Realizar pago de prueba (1 Pi)
-                        </button>
-                    </div>
-                    <div id="paymentResult" class="mt-2" style="display: none;">
-                        <div class="alert alert-info">
-                            <h6>Estado del pago: <span id="paymentStatus"></span></h6>
-                            <h6>ID de transacción: <span id="txid"></span></h6>
-                        </div>
-                    </div>
+                <div id="loadingIndicator" style="display: none;">
+                    <p>Iniciando sesión, por favor espera...</p>
+                    <div class="loading"></div>
                 </div>
             </div>
+        </div>
+        
+        <div class="game-description">
+            <h4>Sobre el Juego</h4>
+            <p>Simon Dice es un juego clásico de memoria donde deberás repetir secuencias cada vez más largas de colores y sonidos.</p>
+            <p>Disfruta de esta versión <span class="rainbow-text">retro-moderna</span> con efectos visuales y sonoros mejorados.</p>
+            <p>Conecta con Pi Network para empezar a jugar y ganar puntos. ¡También puedes donar Pi para añadir puntos extras!</p>
         </div>
     </div>
 
@@ -64,21 +62,91 @@
                 version: "2.0",
                 sandbox: true
             });
+            
+            // Verificar si ya hay una sesión almacenada
+            const userData = JSON.parse(localStorage.getItem('piUserData'));
+            if (userData && userData.accessToken) {
+                // Verificar validez del token (simplemente redirigir al juego)
+                window.location.href = '/simon';
+            }
+            
+            // Crear partículas de fondo
+            createParticles();
+            createPiLogos();
         });
 
-        // Función para mostrar información del usuario
-        async function showUserInfo() {
+        // Crear partículas de fondo
+        function createParticles() {
+            const container = document.getElementById('particles');
+            const particleCount = 15;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                // Tamaño aleatorio
+                const size = Math.random() * 10 + 5;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                // Posición aleatoria
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.top = Math.random() * 100 + 'vh';
+                
+                // Velocidad aleatoria
+                const duration = Math.random() * 15 + 10;
+                particle.style.animationDuration = duration + 's';
+                
+                // Retraso aleatorio
+                particle.style.animationDelay = Math.random() * 5 + 's';
+                
+                container.appendChild(particle);
+            }
+        }
+        
+        // Crear logos flotantes de Pi
+        function createPiLogos() {
+            const container = document.getElementById('particles');
+            const logoCount = 5;
+            
+            for (let i = 0; i < logoCount; i++) {
+                const logo = document.createElement('div');
+                logo.className = 'pi-logo';
+                logo.textContent = 'π';
+                
+                // Posición aleatoria
+                logo.style.left = Math.random() * 100 + 'vw';
+                logo.style.top = Math.random() * 100 + 'vh';
+                
+                // Velocidad aleatoria
+                const duration = Math.random() * 30 + 20;
+                logo.style.animationDuration = duration + 's';
+                
+                // Retraso aleatorio
+                logo.style.animationDelay = Math.random() * 5 + 's';
+                
+                container.appendChild(logo);
+            }
+        }
+
+        // Función para autenticar y redirigir al juego
+        async function authenticateAndRedirect() {
             try {
+                // Mostrar indicador de carga
+                document.getElementById('connectBtn').style.display = 'none';
+                document.getElementById('loadingIndicator').style.display = 'flex';
+                
                 // Obtener el token de acceso
                 const auth = await Pi.authenticate(['username', 'payments', 'wallet_address'], {
                     onIncompletePaymentFound: (payment) => {
                         console.log('Pago incompleto encontrado:', payment);
-                        // Manejar pagos incompletos si es necesario
+                        // Los pagos incompletos se manejarán en la página del juego
                     }
                 });
-                // Guardar el token de acceso en la variable global para usarlo en los callbacks de pago
+                
+                // Guardar el token de acceso
                 currentAccessToken = auth.accessToken;
-                const accessToken = currentAccessToken; // Para mantener compatibilidad con el código existente
+                const accessToken = currentAccessToken;
                 
                 // Obtener información del usuario
                 const userResponse = await fetch('/api/me', {
@@ -94,206 +162,49 @@
                 }
                 
                 const userData = await userResponse.json();
-                document.getElementById('username').textContent = userData.username;
                 
-                // Mostrar información del usuario
-                document.getElementById('username').textContent = userData.username;
-                console.log('Usuario autenticado:', userData.username);
+                // Intentar obtener información de la wallet (puede no estar disponible en sandbox)
+                let walletData = { balance: '0' };
+                try {
+                    const walletResponse = await fetch('/api/wallet', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ accessToken })
+                    });
+                    
+                    if (walletResponse.ok) {
+                        walletData = await walletResponse.json();
+                    }
+                } catch (walletError) {
+                    console.warn('No se pudo obtener información de la wallet:', walletError);
+                }
                 
-                // Mostrar mensaje sobre la wallet
-                document.getElementById('balance').textContent = 'Wallet no disponible en sandbox';
+                // Guardar datos del usuario en localStorage para mantener la sesión
+                const userDataToStore = {
+                    username: userData.username,
+                    accessToken: accessToken,
+                    balance: walletData.balance || '0'
+                };
                 
-                // Información adicional para depuración
-                console.log('Autenticación completa. Token recibido y usuario identificado.');
-                console.log('NOTA: La wallet puede no estar disponible en el entorno de sandbox.');
-                console.log('Para probar completamente la funcionalidad, necesitarás:');
-                console.log('1. Tener una wallet de testnet en Pi Network');
-                console.log('2. Estar autenticado en el Pi Browser');
-                console.log('3. Tener la aplicación registrada correctamente en el Developer Portal')
+                localStorage.setItem('piUserData', JSON.stringify(userDataToStore));
                 
-                // Mostrar información
-                document.getElementById('userInfo').style.display = 'block';
+                // Redirigir al juego
+                window.location.href = '/simon';
+                
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error al obtener información: ' + error.message);
-            }
-        }
-
-        // Función para realizar un pago de prueba
-        async function makePayment() {
-            try {
-                // Mostrar mensaje de carga
-                document.getElementById('paymentBtn').disabled = true;
-                document.getElementById('paymentBtn').textContent = 'Procesando pago...';
+                alert('Error al iniciar sesión: ' + error.message);
                 
-                // Crear un identificador único para el pago
-                const paymentId = 'payment_' + Date.now();
-                
-                // Configurar el pago
-                const paymentData = {
-                    amount: 1,              // 1 Pi
-                    memo: "Pago de prueba", // Descripción del pago
-                    metadata: { paymentId: paymentId } // Metadatos para identificar el pago
-                };
-                
-                // Definir los callbacks necesarios
-                const paymentCallbacks = {
-                    onReadyForServerApproval: function(paymentDTO) {
-                        console.log('Listo para aprobación del servidor:', paymentDTO);
-                        document.getElementById('paymentStatus').textContent = 'Esperando aprobación...';
-                        document.getElementById('txid').textContent = 'Pendiente';
-                        document.getElementById('paymentResult').style.display = 'block';
-                        
-                        // Llamar al servidor para aprobar el pago
-                        fetch('/payment/approve', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ 
-                                paymentId: paymentDTO,
-                                accessToken: currentAccessToken
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log('Respuesta de aprobación:', data);
-                            document.getElementById('paymentStatus').textContent = 'Aprobado, esperando confirmación...';
-                        })
-                        .catch(error => {
-                            console.error('Error al aprobar el pago:', error);
-                            document.getElementById('paymentStatus').textContent = 'Error al aprobar el pago';
-                        });
-                    },
-                    onReadyForServerCompletion: function(paymentDTO, txid) {
-                        console.log('Listo para completar en el servidor:', paymentDTO, txid);
-                        document.getElementById('paymentStatus').textContent = 'Completando...';
-                        document.getElementById('txid').textContent = txid || 'No disponible';
-                        
-                        // Llamar al servidor para completar el pago
-                        fetch('/payment/complete', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ 
-                                paymentId: paymentDTO,
-                                txid: txid
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log('Respuesta de completado:', data);
-                            document.getElementById('paymentStatus').textContent = 'Completado';
-                        })
-                        .catch(error => {
-                            console.error('Error al completar el pago:', error);
-                            document.getElementById('paymentStatus').textContent = 'Error al completar el pago';
-                        });
-                    },
-                    onCancel: function(paymentDTO) {
-                        console.log('Pago cancelado:', paymentDTO);
-                        document.getElementById('paymentStatus').textContent = 'Cancelado';
-                        document.getElementById('paymentBtn').disabled = false;
-                        document.getElementById('paymentBtn').textContent = 'Realizar pago de prueba (1 Pi)';
-                        
-                        // Notificar al servidor sobre la cancelación
-                        fetch('/payment/complete', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ 
-                                paymentId: paymentDTO,
-                                debug: 'cancel'
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log('Respuesta de cancelación:', data);
-                        })
-                        .catch(error => {
-                            console.error('Error al notificar cancelación:', error);
-                        });
-                    },
-                    onError: function(error, paymentDTO) {
-                        console.error('Error en el pago:', error, paymentDTO);
-                        document.getElementById('paymentStatus').textContent = 'Error: ' + (error.message || 'Desconocido');
-                        document.getElementById('paymentBtn').disabled = false;
-                        document.getElementById('paymentBtn').textContent = 'Realizar pago de prueba (1 Pi)';
-                        
-                        // Notificar al servidor sobre el error
-                        fetch('/payment/error', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ 
-                                paymentDTO: paymentDTO,
-                                paymentId: paymentDTO,
-                                error: error.message || 'Error desconocido'
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log('Respuesta de error:', data);
-                        })
-                        .catch(error => {
-                            console.error('Error al notificar error:', error);
-                        });
-                    },
-                    onIncompletePaymentFound: function(paymentDTO) {
-                        console.log('Pago incompleto encontrado:', paymentDTO);
-                        document.getElementById('paymentStatus').textContent = 'Completando pago pendiente...';
-                        document.getElementById('txid').textContent = paymentDTO.transaction ? paymentDTO.transaction.txid : 'No disponible';
-                        document.getElementById('paymentResult').style.display = 'block';
-                        
-                        // Completar el pago incompleto
-                        if (paymentDTO.transaction && paymentDTO.transaction.txid) {
-                            fetch('/payment/complete', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({ 
-                                    paymentId: paymentDTO.identifier,
-                                    txid: paymentDTO.transaction.txid
-                                })
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                console.log('Respuesta de completado de pago incompleto:', data);
-                                document.getElementById('paymentStatus').textContent = 'Pago pendiente completado';
-                            })
-                            .catch(error => {
-                                console.error('Error al completar pago pendiente:', error);
-                                document.getElementById('paymentStatus').textContent = 'Error al completar pago pendiente';
-                            });
-                        }
-                    }
-                };
-                
-                // Solicitar el pago con los callbacks
-                Pi.createPayment(paymentData, paymentCallbacks);
-                
-                // Nota: No necesitamos mostrar el resultado aquí porque lo haremos en los callbacks
-                // Los callbacks se encargarán de actualizar la interfaz de usuario según el estado del pago
-                
-                console.log('Iniciando proceso de pago...');
-                
-            } catch (error) {
-                console.error('Error al realizar el pago:', error);
-                alert('Error al realizar el pago: ' + error.message);
-                
-                // Restaurar el botón
-                document.getElementById('paymentBtn').disabled = false;
-                document.getElementById('paymentBtn').textContent = 'Realizar pago de prueba (1 Pi)';
+                // Restaurar botón de conexión
+                document.getElementById('connectBtn').style.display = 'block';
+                document.getElementById('loadingIndicator').style.display = 'none';
             }
         }
         
         // Event listeners
-        document.getElementById('connectBtn').addEventListener('click', showUserInfo);
-        document.getElementById('paymentBtn').addEventListener('click', makePayment);
+        document.getElementById('connectBtn').addEventListener('click', authenticateAndRedirect);
     </script>
 </body>
 </html>
