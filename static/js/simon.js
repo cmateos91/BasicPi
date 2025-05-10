@@ -186,11 +186,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const randomColor = buttonColors[randomIndex];
         gamePattern.push(randomColor);
         
-        // Actualizar puntuación - bonificación por nivel alto
-        score = (level - 1) * 10 * (1 + Math.floor(level / 5) * 0.5);
-        scoreDisplay.textContent = score.toString();
+        // No actualizamos la puntuación aquí, se hace cuando se completa correctamente una secuencia
         
-        // Actualizar datos en el sistema de pagos
+        // Resetear correctamente el nivel, asegurándonos de que la puntuación sea 0
         PaymentSystem.setScore(score);
         PaymentSystem.setLevel(level);
         
@@ -221,9 +219,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     playSound('success');
                 }
                 
-                // Actualizar puntuación con bonificación
-                const levelBonus = Math.pow(1.2, Math.min(level, 10));
-                score += Math.floor(level * 10 * levelBonus);
+                // Actualizar la puntuación inmediatamente cuando se completa una secuencia
+                score = level;
                 scoreDisplay.textContent = score.toString();
                 
                 // Actualizar score en sistema de pagos
@@ -261,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 message += '¡WOW! Eres un maestro del Simon Dice.';
             }
             
-            message += `\nLlegaste al nivel ${level} con ${score} puntos.\n\n¿Quieres jugar de nuevo?`;
+            message += `\nLlegaste al nivel ${level}, superando ${score} rondas.\n\n¿Quieres jugar de nuevo?`;
             
             // Mostrar mensaje de game over con pequeña demora
             setTimeout(() => {
@@ -270,7 +267,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Reiniciar juego después de una breve pausa
                     setTimeout(() => {
                         isPlaying = true;
-                        startBtn.textContent = 'RESET';
+                        startBtn.style.display = 'none';
+                        document.querySelector('.controls-title').style.display = 'none';
                         nextSequence();
                     }, 500);
                 } else {
@@ -289,7 +287,8 @@ document.addEventListener('DOMContentLoaded', function() {
         isPlaying = false;
         isGameOver = false;
         scoreDisplay.textContent = '0';
-        startBtn.textContent = 'INICIO';
+        startBtn.style.display = 'block';
+        document.querySelector('.controls-title').style.display = 'block';
         buttons.forEach(btn => btn.style.pointerEvents = 'auto');
         
         // Actualizar datos en el sistema de pagos
@@ -336,7 +335,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!isPlaying) {
             isPlaying = true;
-            startBtn.textContent = 'RESET';
+            startBtn.style.display = 'none';
+            document.querySelector('.controls-title').style.display = 'none';
             nextSequence();
         } else {
             resetGame();
