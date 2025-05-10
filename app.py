@@ -31,6 +31,17 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Configuración de Flask
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-key-change-in-production')
 
+# Permitir que la aplicación se muestre en iframes
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    # Eliminar X-Frame-Options para permitir que se muestre en iframes
+    if 'X-Frame-Options' in response.headers:
+        del response.headers['X-Frame-Options']
+    return response
+
 @app.route('/')
 def index():
     return render_template('index.html')
