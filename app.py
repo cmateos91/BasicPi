@@ -124,6 +124,115 @@ def get_wallet_info():
         logger.error(f'Error getting wallet info: {str(e)}')
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
+# Rutas para manejar pagos de Pi Network
+@app.route('/payment/approve', methods=['POST'])
+def approve_payment():
+    try:
+        # Obtener el ID del pago y el token de acceso
+        payment_id = request.json.get('paymentId')
+        access_token = request.json.get('accessToken')
+        
+        if not payment_id or not access_token:
+            logger.error('Missing paymentId or accessToken')
+            return jsonify({'error': 'Missing paymentId or accessToken'}), 400
+        
+        logger.info(f'Approving payment: {payment_id}')
+        
+        # Configurar headers para la petición a la API de Pi Network
+        headers = {
+            'Authorization': f'Key {api_key}'
+        }
+        
+        # Aprobar el pago en la API de Pi Network
+        approve_url = f"https://api.minepi.com/v2/payments/{payment_id}/approve"
+        approve_data = {}  # No se necesitan datos adicionales para aprobar
+        
+        response = requests.post(approve_url, json=approve_data, headers=headers)
+        
+        if response.status_code != 200:
+            logger.error(f'Failed to approve payment: {response.text}')
+            return jsonify({'error': f'Failed to approve payment: {response.text}'}), 400
+        
+        approval_result = response.json()
+        logger.info(f'Payment approved: {approval_result}')
+        
+        return jsonify(approval_result)
+    
+    except Exception as e:
+        logger.error(f'Error approving payment: {str(e)}')
+        return jsonify({'error': f'Error approving payment: {str(e)}'}), 500
+
+@app.route('/payment/complete', methods=['POST'])
+def complete_payment():
+    try:
+        # Obtener el ID del pago y el ID de la transacción
+        payment_id = request.json.get('paymentId')
+        txid = request.json.get('txid')
+        
+        if not payment_id:
+            logger.error('Missing paymentId')
+            return jsonify({'error': 'Missing paymentId'}), 400
+        
+        logger.info(f'Completing payment: {payment_id}, txid: {txid}')
+        
+        # Si es una cancelación o un error, simplemente registrarlo
+        debug = request.json.get('debug')
+        if debug == 'cancel':
+            logger.info(f'Payment {payment_id} was cancelled')
+            return jsonify({'status': 'cancelled'})
+        elif debug == 'error':
+            logger.info(f'Payment {payment_id} had an error')
+            return jsonify({'status': 'error'})
+        
+        # Si no hay txid, puede ser una cancelación o un error
+        if not txid:
+            logger.warning(f'No txid provided for payment {payment_id}')
+            return jsonify({'status': 'incomplete', 'message': 'No transaction ID provided'})
+        
+        # Configurar headers para la petición a la API de Pi Network
+        headers = {
+            'Authorization': f'Key {api_key}'
+        }
+        
+        # Completar el pago en la API de Pi Network
+        complete_url = f"https://api.minepi.com/v2/payments/{payment_id}/complete"
+        complete_data = {
+            'txid': txid
+        }
+        
+        response = requests.post(complete_url, json=complete_data, headers=headers)
+        
+        if response.status_code != 200:
+            logger.error(f'Failed to complete payment: {response.text}')
+            return jsonify({'error': f'Failed to complete payment: {response.text}'}), 400
+        
+        completion_result = response.json()
+        logger.info(f'Payment completed: {completion_result}')
+        
+        return jsonify(completion_result)
+    
+    except Exception as e:
+        logger.error(f'Error completing payment: {str(e)}')
+        return jsonify({'error': f'Error completing payment: {str(e)}'}), 500
+
+@app.route('/payment/error', methods=['POST'])
+def payment_error():
+    try:
+        # Obtener los datos del error
+        payment_dto = request.json.get('paymentDTO')
+        payment_id = request.json.get('paymentId')
+        
+        logger.error(f'Payment error: {payment_id}, DTO: {payment_dto}')
+        
+        # Aquí podrías implementar lógica para manejar errores de pago
+        # Por ejemplo, notificar al usuario, intentar nuevamente, etc.
+        
+        return jsonify({'status': 'error_logged'})
+    
+    except Exception as e:
+        logger.error(f'Error handling payment error: {str(e)}')
+        return jsonify({'error': f'Error handling payment error: {str(e)}'}), 500
+
 if __name__ == '__main__':
     logger.info('Starting Pi Network Basic App')
     app.run(debug=True, port=int(os.getenv('PORT', 8080)))

@@ -139,35 +139,132 @@
                         document.getElementById('txid').textContent = 'Pendiente';
                         document.getElementById('paymentResult').style.display = 'block';
                         
-                        // En un caso real, aquí haríamos una llamada al servidor para aprobar el pago
-                        // Por ahora, simulamos que el pago se aprueba automáticamente
+                        // Llamar al servidor para aprobar el pago
+                        fetch('/payment/approve', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                                paymentId: paymentDTO,
+                                accessToken: accessToken
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('Respuesta de aprobación:', data);
+                            document.getElementById('paymentStatus').textContent = 'Aprobado, esperando confirmación...';
+                        })
+                        .catch(error => {
+                            console.error('Error al aprobar el pago:', error);
+                            document.getElementById('paymentStatus').textContent = 'Error al aprobar el pago';
+                        });
                     },
                     onReadyForServerCompletion: function(paymentDTO, txid) {
                         console.log('Listo para completar en el servidor:', paymentDTO, txid);
-                        document.getElementById('paymentStatus').textContent = 'Completado';
+                        document.getElementById('paymentStatus').textContent = 'Completando...';
                         document.getElementById('txid').textContent = txid || 'No disponible';
                         
-                        // En un caso real, aquí haríamos una llamada al servidor para completar el pago
+                        // Llamar al servidor para completar el pago
+                        fetch('/payment/complete', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                                paymentId: paymentDTO,
+                                txid: txid
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('Respuesta de completado:', data);
+                            document.getElementById('paymentStatus').textContent = 'Completado';
+                        })
+                        .catch(error => {
+                            console.error('Error al completar el pago:', error);
+                            document.getElementById('paymentStatus').textContent = 'Error al completar el pago';
+                        });
                     },
                     onCancel: function(paymentDTO) {
                         console.log('Pago cancelado:', paymentDTO);
                         document.getElementById('paymentStatus').textContent = 'Cancelado';
                         document.getElementById('paymentBtn').disabled = false;
                         document.getElementById('paymentBtn').textContent = 'Realizar pago de prueba (1 Pi)';
+                        
+                        // Notificar al servidor sobre la cancelación
+                        fetch('/payment/complete', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                                paymentId: paymentDTO,
+                                debug: 'cancel'
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('Respuesta de cancelación:', data);
+                        })
+                        .catch(error => {
+                            console.error('Error al notificar cancelación:', error);
+                        });
                     },
                     onError: function(error, paymentDTO) {
                         console.error('Error en el pago:', error, paymentDTO);
-                        document.getElementById('paymentStatus').textContent = 'Error: ' + error.message;
+                        document.getElementById('paymentStatus').textContent = 'Error: ' + (error.message || 'Desconocido');
                         document.getElementById('paymentBtn').disabled = false;
                         document.getElementById('paymentBtn').textContent = 'Realizar pago de prueba (1 Pi)';
+                        
+                        // Notificar al servidor sobre el error
+                        fetch('/payment/error', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                                paymentDTO: paymentDTO,
+                                paymentId: paymentDTO,
+                                error: error.message || 'Error desconocido'
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('Respuesta de error:', data);
+                        })
+                        .catch(error => {
+                            console.error('Error al notificar error:', error);
+                        });
                     },
                     onIncompletePaymentFound: function(paymentDTO) {
                         console.log('Pago incompleto encontrado:', paymentDTO);
-                        document.getElementById('paymentStatus').textContent = 'Pago incompleto encontrado';
+                        document.getElementById('paymentStatus').textContent = 'Completando pago pendiente...';
                         document.getElementById('txid').textContent = paymentDTO.transaction ? paymentDTO.transaction.txid : 'No disponible';
                         document.getElementById('paymentResult').style.display = 'block';
                         
-                        // En un caso real, aquí manejaríamos el pago incompleto
+                        // Completar el pago incompleto
+                        if (paymentDTO.transaction && paymentDTO.transaction.txid) {
+                            fetch('/payment/complete', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ 
+                                    paymentId: paymentDTO.identifier,
+                                    txid: paymentDTO.transaction.txid
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log('Respuesta de completado de pago incompleto:', data);
+                                document.getElementById('paymentStatus').textContent = 'Pago pendiente completado';
+                            })
+                            .catch(error => {
+                                console.error('Error al completar pago pendiente:', error);
+                                document.getElementById('paymentStatus').textContent = 'Error al completar pago pendiente';
+                            });
+                        }
                     }
                 };
                 
