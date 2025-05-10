@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "app.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "templates/$1"
+    }
+  ],
+  "env": {
+    "PI_API_KEY": "@PI_API_KEY",
+    "FLASK_SECRET_KEY": "@FLASK_SECRET_KEY"
+  }
+}
