@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_bootstrap import Bootstrap
+from flask_cors import CORS
 import requests
 import os
 from dotenv import load_dotenv
@@ -25,6 +26,7 @@ server_header = {
 
 app = Flask(__name__, static_folder='static')
 Bootstrap(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Configuración de Flask
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-key-change-in-production')
