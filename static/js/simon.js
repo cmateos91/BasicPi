@@ -366,7 +366,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Almacenar el token para los pagos
                 PaymentSystem.setAccessToken(auth.accessToken);
                 
+                // Mostrar datos del usuario en la interfaz
+                if (usernameDisplay && auth.user && auth.user.username) {
+                    usernameDisplay.textContent = auth.user.username;
+                }
+                
+                // Guardar datos del usuario en localStorage para persistencia
+                try {
+                    const userData = {
+                        username: auth.user.username,
+                        accessToken: auth.accessToken
+                    };
+                    localStorage.setItem('piUserData', JSON.stringify(userData));
+                } catch (storageError) {
+                    console.warn('No se pudieron guardar datos en localStorage:', storageError);
+                }
+                
                 console.log('Autenticación completada:', auth.user.username);
+                
+                // Obtener información adicional del usuario si es necesario
+                try {
+                    const walletInfo = await PaymentSystem.getWalletInfo(auth.accessToken);
+                    if (balanceDisplay && walletInfo && walletInfo.balance) {
+                        balanceDisplay.textContent = walletInfo.balance;
+                    }
+                } catch (walletError) {
+                    console.warn('Error al obtener información de wallet:', walletError);
+                }
                 
                 // Verificar pagos pendientes adicionales
                 PaymentSystem.checkPendingPayments();
@@ -378,6 +404,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (userData && userData.accessToken) {
                     PaymentSystem.setAccessToken(userData.accessToken);
                     console.log('Usando token de sesión existente');
+                    
+                    // Mostrar datos del usuario desde localStorage
+                    if (usernameDisplay && userData.username) {
+                        usernameDisplay.textContent = userData.username;
+                    }
+                    
+                    if (balanceDisplay && userData.balance) {
+                        balanceDisplay.textContent = userData.balance;
+                    } else {
+                        // Intentar obtener balance si no está guardado
+                        try {
+                            const walletInfo = await PaymentSystem.getWalletInfo(userData.accessToken);
+                            if (balanceDisplay && walletInfo && walletInfo.balance) {
+                                balanceDisplay.textContent = walletInfo.balance;
+                                
+                                // Actualizar localStorage con el balance
+                                userData.balance = walletInfo.balance;
+                                localStorage.setItem('piUserData', JSON.stringify(userData));
+                            }
+                        } catch (walletError) {
+                            console.warn('Error al obtener información de wallet con token guardado:', walletError);
+                        }
+                    }
                 }
             }
             

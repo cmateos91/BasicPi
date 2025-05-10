@@ -532,7 +532,7 @@ const PaymentSystem = {
     checkAuthentication: async function() {
         try {
             // Recuperar datos de la sesión del localStorage
-            const userData = JSON.parse(localStorage.getItem('piUserData'));
+            const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
             
             if (!userData || !userData.accessToken) {
                 // Si no hay datos de sesión, redirigir a la página de inicio
@@ -543,25 +543,62 @@ const PaymentSystem = {
             // Establecer token de acceso para los pagos
             currentAccessToken = userData.accessToken;
             
-            // Mostrar datos de usuario en la UI si hay elementos DOM configurados
-            if (window.usernameDisplay) {
-                window.usernameDisplay.textContent = userData.username || 'Usuario';
+            // Mostrar datos de usuario en la UI si hay elementos DOM configurados y datos disponibles
+            if (window.usernameDisplay && userData.username) {
+                window.usernameDisplay.textContent = userData.username;
             }
             
             if (window.balanceDisplay) {
-                window.balanceDisplay.textContent = userData.balance || '0';
+                if (userData.balance) {
+                    window.balanceDisplay.textContent = userData.balance;
+                } else {
+                    window.balanceDisplay.textContent = '0';
+                }
             }
             
             // Re-autenticar para mantener la sesión activa
             try {
-                const auth = await Pi.authenticate(['payments'], {
-                    onIncompletePaymentFound: this.handleIncompletePayment.bind(this)
-                });
+                const scopes = ['payments', 'username'];
+                
+                // Función para manejar pagos incompletos (directa, no como método)
+                const handleIncompletePayment = (payment) => {
+                    console.log('Pago incompleto encontrado durante re-autenticación:', payment);
+                    this.handleIncompletePayment(payment);
+                };
+                
+                const auth = await Pi.authenticate(scopes, handleIncompletePayment);
                 
                 // Actualizar token si ha cambiado
                 if (auth.accessToken !== currentAccessToken) {
                     currentAccessToken = auth.accessToken;
                     userData.accessToken = currentAccessToken;
+                    
+                    // Actualizar datos de usuario
+                    if (auth.user && auth.user.username) {
+                        userData.username = auth.user.username;
+                        
+                        // Actualizar UI
+                        if (window.usernameDisplay) {
+                            window.usernameDisplay.textContent = auth.user.username;
+                        }
+                        
+                        // Intentar obtener balance actualizado
+                        try {
+                            const walletInfo = await this.getWalletInfo(auth.accessToken);
+                            if (walletInfo && walletInfo.balance) {
+                                userData.balance = walletInfo.balance;
+                                
+                                // Actualizar UI
+                                if (window.balanceDisplay) {
+                                    window.balanceDisplay.textContent = walletInfo.balance;
+                                }
+                            }
+                        } catch (walletError) {
+                            console.warn('Error al obtener información de wallet durante re-autenticación:', walletError);
+                        }
+                    }
+                    
+                    // Guardar datos actualizados
                     localStorage.setItem('piUserData', JSON.stringify(userData));
                 }
                 
