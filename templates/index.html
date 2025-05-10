@@ -30,6 +30,17 @@
                 <div id="userInfo" style="display: none;">
                     <h6>Usuario: <span id="username"></span></h6>
                     <h6>Balance: <span id="balance"></span></h6>
+                    <div class="mt-3">
+                        <button id="paymentBtn" class="btn btn-success w-100">
+                            Realizar pago de prueba (1 Pi)
+                        </button>
+                    </div>
+                    <div id="paymentResult" class="mt-2" style="display: none;">
+                        <div class="alert alert-info">
+                            <h6>Estado del pago: <span id="paymentStatus"></span></h6>
+                            <h6>ID de transacción: <span id="txid"></span></h6>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -103,8 +114,50 @@
             }
         }
 
-        // Event listener para el botón de conexión
+        // Función para realizar un pago de prueba
+        async function makePayment() {
+            try {
+                // Mostrar mensaje de carga
+                document.getElementById('paymentBtn').disabled = true;
+                document.getElementById('paymentBtn').textContent = 'Procesando pago...';
+                
+                // Crear un identificador único para el pago
+                const paymentId = 'payment_' + Date.now();
+                
+                // Configurar el pago
+                const paymentData = {
+                    amount: 1,              // 1 Pi
+                    memo: "Pago de prueba", // Descripción del pago
+                    metadata: { paymentId: paymentId } // Metadatos para identificar el pago
+                };
+                
+                // Solicitar el pago
+                const payment = await Pi.createPayment(paymentData);
+                
+                // Mostrar el resultado del pago
+                document.getElementById('paymentStatus').textContent = payment.status;
+                document.getElementById('txid').textContent = payment.transaction && payment.transaction.txid ? payment.transaction.txid : 'Pendiente';
+                document.getElementById('paymentResult').style.display = 'block';
+                
+                // Restaurar el botón
+                document.getElementById('paymentBtn').disabled = false;
+                document.getElementById('paymentBtn').textContent = 'Realizar pago de prueba (1 Pi)';
+                
+                console.log('Resultado del pago:', payment);
+                
+            } catch (error) {
+                console.error('Error al realizar el pago:', error);
+                alert('Error al realizar el pago: ' + error.message);
+                
+                // Restaurar el botón
+                document.getElementById('paymentBtn').disabled = false;
+                document.getElementById('paymentBtn').textContent = 'Realizar pago de prueba (1 Pi)';
+            }
+        }
+        
+        // Event listeners
         document.getElementById('connectBtn').addEventListener('click', showUserInfo);
+        document.getElementById('paymentBtn').addEventListener('click', makePayment);
     </script>
 </body>
 </html>
