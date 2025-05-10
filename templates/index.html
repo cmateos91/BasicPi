@@ -36,12 +36,20 @@
     </div>
 
     <!-- SDK de Pi Network -->
-    <script src="https://sdk.minepi.com/v2/sdk.js"></script>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <script>
         // Inicializar el SDK de Pi Network
-        Pi.init({
-            version: "2.0",
-            sandbox: true
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof Pi === 'undefined') {
+                console.error('Pi SDK no está cargado correctamente');
+                alert('Error: No se pudo cargar el SDK de Pi Network. Por favor, intenta de nuevo.');
+                return;
+            }
+            
+            Pi.init({
+                version: "2.0",
+                sandbox: true
+            });
         });
 
         // Función para mostrar información del usuario
