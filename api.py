@@ -20,13 +20,6 @@ server_header = {
 
 app = Flask(__name__)
 
-# Configuración de Flask
-app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-key-change-in-production')
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/api/me', methods=['POST'])
 def get_user_info():
     try:
@@ -88,5 +81,4 @@ def get_wallet_info():
         return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    logger.info('Starting Pi Network Basic App')
     app.run(debug=True, port=int(os.getenv('PORT', 8080)))
