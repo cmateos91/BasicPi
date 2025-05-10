@@ -56,7 +56,13 @@
         async function showUserInfo() {
             try {
                 // Obtener el token de acceso
-                const accessToken = await Pi.Authenticate();
+                const auth = await Pi.authenticate(['username', 'payments', 'wallet_address'], {
+                    onIncompletePaymentFound: (payment) => {
+                        console.log('Pago incompleto encontrado:', payment);
+                        // Manejar pagos incompletos si es necesario
+                    }
+                });
+                const accessToken = auth.accessToken;
                 
                 // Obtener información del usuario
                 const userResponse = await fetch('/api/me', {
