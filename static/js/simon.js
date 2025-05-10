@@ -11,6 +11,11 @@ document.addEventListener('DOMContentLoaded', function() {
         sandbox: true
     });
     
+    // Variables para control de autenticación
+    let authPrimaryComplete = false;
+    let authSecondaryPending = true; // Indica si todavía debe mostrarse el diálogo secundario
+    let savedUsername = null; // Guardar el nombre de usuario de la primera autenticación
+
     // Elementos del DOM
     const greenBtn = document.getElementById('green');
     const redBtn = document.getElementById('red');
@@ -376,6 +381,20 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const auth = await Pi.authenticate(scopes, handleIncompletePayment);
                 
+                // Verificar si auth y auth.user están definidos
+                if (!auth || !auth.user) {
+                    throw new Error('Autenticación incompleta - datos de usuario no disponibles');
+                }
+                
+                // Marcar la autenticación primaria como completada
+                authPrimaryComplete = true;
+                
+                // Guardar el nombre de usuario para usarlo en la segunda autenticación
+                if (auth.user && auth.user.username) {
+                    savedUsername = auth.user.username;
+                    console.log('Nombre de usuario guardado de primera autenticación:', savedUsername);
+                }
+                
                 // Almacenar el token para los pagos
                 PaymentSystem.setAccessToken(auth.accessToken);
                 
@@ -453,44 +472,73 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Todo listo para iniciar el juego
             
-            // SOLICIÓN DIRECTA: Intentar establecer el nombre de usuario de diferentes maneras
-            console.log('Intento forzar nombre de usuario:');
+            // SOLUCIÓN PARA DOBLE AUTENTICACIÓN: Usar nombre guardado o intentar varias fuentes
+            console.log('Estableciendo nombre de usuario de manera confiable:');
             
-            // Obtener el nombre de usuario directamente
             try {
+                // Prioridad 1: Usar el nombre guardado de la primera autenticación
+                if (savedUsername) {
+                    usernameDisplay.textContent = savedUsername;
+                    console.log('Nombre de usuario establecido desde primera autenticación:', savedUsername);
+                    
+                    // Bloquear para evitar sobrescrituras
+                    usernameDisplay.dataset.usernameLocked = 'true';
+                    
+                    // Guardar en almacenamiento
+                    try {
+                        const userData = {
+                            username: savedUsername,
+                            accessToken: auth ? auth.accessToken : null
+                        };
+                        localStorage.setItem('piUserData', JSON.stringify(userData));
+                        sessionStorage.setItem('piUserData', JSON.stringify(userData));
+                        console.log('Datos de usuario guardados con nombre de primera autenticación');
+                    } catch (storageError) {
+                        console.warn('Error al guardar datos con nombre de primera autenticación:', storageError);
+                    }
+                    
+                    return;
+                }
+                
+                // Obtener el nombre de usuario directamente
                 // Intento 1: Desde sessionStorage
                 const sessionData = JSON.parse(sessionStorage.getItem('piUserData') || '{}');
                 if (sessionData && sessionData.username) {
                     if (usernameDisplay) {
                         usernameDisplay.textContent = sessionData.username;
                         console.log('Nombre de usuario establecido desde sessionStorage:', sessionData.username);
+                        usernameDisplay.dataset.usernameLocked = 'true'; // Bloquear para evitar cambios
                     }
                 }
                 
                 // Intento 2: Desde localStorage
-                const localData = JSON.parse(localStorage.getItem('piUserData') || '{}');
-                if (localData && localData.username) {
-                    if (usernameDisplay) {
-                        usernameDisplay.textContent = localData.username;
-                        console.log('Nombre de usuario establecido desde localStorage:', localData.username);
+                if (!usernameDisplay.dataset.usernameLocked) {
+                    const localData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                    if (localData && localData.username) {
+                        if (usernameDisplay) {
+                            usernameDisplay.textContent = localData.username;
+                            console.log('Nombre de usuario establecido desde localStorage:', localData.username);
+                            usernameDisplay.dataset.usernameLocked = 'true'; // Bloquear para evitar cambios
+                        }
                     }
                 }
                 
                 // Intento 3: Si aún no hay nombre, intentar obtenerlo de la autenticación
-                if (!usernameDisplay.textContent && auth && auth.user && auth.user.username) {
+                if (!usernameDisplay.dataset.usernameLocked && auth && auth.user && auth.user.username) {
                     usernameDisplay.textContent = auth.user.username;
                     console.log('Nombre de usuario establecido desde auth:', auth.user.username);
+                    usernameDisplay.dataset.usernameLocked = 'true'; // Bloquear para evitar cambios
                 }
                 
                 // Intento 4: Establecer un valor por defecto si todo lo demás falla
-                if (!usernameDisplay.textContent) {
+                if (!usernameDisplay.dataset.usernameLocked) {
                     usernameDisplay.textContent = 'Pioneer';
                     console.log('Establecido nombre de usuario por defecto: Pioneer');
                 }
             } catch (userError) {
                 console.error('Error al intentar establecer nombre de usuario:', userError);
                 // Establecer un valor por defecto si hay un error
-                if (usernameDisplay) {
+                if (usernameDisplay && !usernameDisplay.dataset.usernameLocked) {
                     usernameDisplay.textContent = 'Pioneer';
                     console.log('Establecido nombre de usuario por defecto debido a error');
                 }
@@ -509,13 +557,25 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateUserInterface() {
         // Intentar obtener datos del usuario desde localStorage
         try {
+            // Si el nombre de usuario ya está bloqueado, no hacer nada
+            if (usernameDisplay && usernameDisplay.dataset.usernameLocked === 'true') {
+                // Solo actualizar el balance
+                const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                if (userData && userData.balance && balanceDisplay) {
+                    balanceDisplay.textContent = userData.balance;
+                }
+                return;
+            }
+
             const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
             
             // Actualizar nombre de usuario si está disponible
             if (userData && userData.username && usernameDisplay) {
                 usernameDisplay.textContent = userData.username;
                 console.log('UI actualizada: nombre de usuario =', userData.username);
-            } else if (usernameDisplay) {
+                // Bloquear para evitar sobrescrituras
+                usernameDisplay.dataset.usernameLocked = 'true';
+            } else if (usernameDisplay && !usernameDisplay.dataset.usernameLocked) {
                 // Establecer un valor por defecto
                 usernameDisplay.textContent = 'Pioneer';
                 console.log('UI actualizada: nombre de usuario por defecto = Pioneer');
@@ -534,8 +594,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Ejecutar inmediatamente para asegurar que la UI tenga datos
     updateUserInterface();
     
-    // Programar actualizaciones periódicas de la UI
-    setInterval(updateUserInterface, 2000); // Cada 2 segundos
+    // Programar actualizaciones periódicas del balance solamente
+    setInterval(function() {
+        // Solo actualizar el balance, no el nombre de usuario
+        try {
+            const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+            if (userData && userData.balance && balanceDisplay) {
+                balanceDisplay.textContent = userData.balance;
+            }
+        } catch (error) {
+            console.error('Error al actualizar balance:', error);
+        }
+    }, 5000); // Cada 5 segundos
     
     // Añadir efecto de vibración al juego para dispositivos móviles
     if (navigator.vibrate) {
