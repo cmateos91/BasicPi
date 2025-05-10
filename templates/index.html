@@ -49,6 +49,9 @@
     <!-- SDK de Pi Network -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <script>
+        // Variables globales
+        let currentAccessToken = null;
+        
         // Inicializar el SDK de Pi Network
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof Pi === 'undefined') {
@@ -73,7 +76,9 @@
                         // Manejar pagos incompletos si es necesario
                     }
                 });
-                const accessToken = auth.accessToken;
+                // Guardar el token de acceso en la variable global para usarlo en los callbacks de pago
+                currentAccessToken = auth.accessToken;
+                const accessToken = currentAccessToken; // Para mantener compatibilidad con el código existente
                 
                 // Obtener información del usuario
                 const userResponse = await fetch('/api/me', {
@@ -147,7 +152,7 @@
                             },
                             body: JSON.stringify({ 
                                 paymentId: paymentDTO,
-                                accessToken: accessToken
+                                accessToken: currentAccessToken
                             })
                         })
                         .then(response => response.json())
