@@ -85,10 +85,13 @@ def get_user_info():
 def get_wallet_info():
     try:
         # Obtener el token de acceso del frontend
+        logger.debug(f'Request JSON: {request.json}')
         access_token = request.json.get('accessToken')
         if not access_token:
             logger.error('No access token provided')
             return jsonify({'error': 'No access token provided'}), 400
+
+        logger.debug(f'Access token received: {access_token[:10]}...')
 
         # Configurar headers para la petición al usuario
         user_header = {
@@ -97,19 +100,29 @@ def get_wallet_info():
 
         # Hacer la petición a la API de Pi Network
         wallet_url = "https://api.minepi.com/v2/wallet"
+        logger.debug(f'Making request to: {wallet_url}')
         response = requests.get(wallet_url, headers=user_header)
+
+        logger.debug(f'Response status code: {response.status_code}')
+        logger.debug(f'Response content: {response.text}')
 
         if response.status_code != 200:
             logger.error(f'Failed to get wallet info: {response.text}')
-            return jsonify({'error': 'Failed to get wallet info'}), 400
+            return jsonify({'error': f'Failed to get wallet info: {response.text}'}), 400
 
         wallet_data = response.json()
         logger.info(f'Successfully retrieved wallet info: {wallet_data}')
+        
+        # Si no hay balance, establecer un valor predeterminado
+        if 'balance' not in wallet_data:
+            wallet_data['balance'] = '0'
+            logger.warning('Balance not found in wallet data, using default value')
+            
         return jsonify(wallet_data)
 
     except Exception as e:
         logger.error(f'Error getting wallet info: {str(e)}')
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 if __name__ == '__main__':
     logger.info('Starting Pi Network Basic App')

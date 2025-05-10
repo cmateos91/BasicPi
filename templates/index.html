@@ -81,20 +81,29 @@
                 document.getElementById('username').textContent = userData.username;
                 
                 // Obtener información de la wallet
-                const walletResponse = await fetch('/api/wallet', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ accessToken })
-                });
-                
-                if (!walletResponse.ok) {
-                    throw new Error('Error al obtener información de la wallet');
+                try {
+                    const walletResponse = await fetch('/api/wallet', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ accessToken })
+                    });
+                    
+                    if (!walletResponse.ok) {
+                        const errorData = await walletResponse.json();
+                        console.error('Error de wallet:', errorData);
+                        // Continuar con la ejecución, pero mostrar un mensaje de error
+                        document.getElementById('balance').textContent = 'Error al obtener balance';
+                    } else {
+                        const walletData = await walletResponse.json();
+                        console.log('Wallet data:', walletData);
+                        document.getElementById('balance').textContent = `${walletData.balance || '0'} Pi`;
+                    }
+                } catch (walletError) {
+                    console.error('Error al procesar wallet:', walletError);
+                    document.getElementById('balance').textContent = 'Error al obtener balance';
                 }
-                
-                const walletData = await walletResponse.json();
-                document.getElementById('balance').textContent = `${walletData.balance} Pi`;
                 
                 // Mostrar información
                 document.getElementById('userInfo').style.display = 'block';
