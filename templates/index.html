@@ -80,30 +80,20 @@
                 const userData = await userResponse.json();
                 document.getElementById('username').textContent = userData.username;
                 
-                // Obtener información de la wallet
-                try {
-                    const walletResponse = await fetch('/api/wallet', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ accessToken })
-                    });
-                    
-                    if (!walletResponse.ok) {
-                        const errorData = await walletResponse.json();
-                        console.error('Error de wallet:', errorData);
-                        // Continuar con la ejecución, pero mostrar un mensaje de error
-                        document.getElementById('balance').textContent = 'Error al obtener balance';
-                    } else {
-                        const walletData = await walletResponse.json();
-                        console.log('Wallet data:', walletData);
-                        document.getElementById('balance').textContent = `${walletData.balance || '0'} Pi`;
-                    }
-                } catch (walletError) {
-                    console.error('Error al procesar wallet:', walletError);
-                    document.getElementById('balance').textContent = 'Error al obtener balance';
-                }
+                // Mostrar información del usuario
+                document.getElementById('username').textContent = userData.username;
+                console.log('Usuario autenticado:', userData.username);
+                
+                // Mostrar mensaje sobre la wallet
+                document.getElementById('balance').textContent = 'Wallet no disponible en sandbox';
+                
+                // Información adicional para depuración
+                console.log('Autenticación completa. Token recibido y usuario identificado.');
+                console.log('NOTA: La wallet puede no estar disponible en el entorno de sandbox.');
+                console.log('Para probar completamente la funcionalidad, necesitarás:');
+                console.log('1. Tener una wallet de testnet en Pi Network');
+                console.log('2. Estar autenticado en el Pi Browser');
+                console.log('3. Tener la aplicación registrada correctamente en el Developer Portal')
                 
                 // Mostrar información
                 document.getElementById('userInfo').style.display = 'block';
