@@ -238,6 +238,120 @@ def payment_error():
         logger.error(f'Error handling payment error: {str(e)}')
         return jsonify({'error': f'Error handling payment error: {str(e)}'}), 500
 
+@app.route('/payment/check-pending', methods=['POST'])
+def check_pending_payments():
+    try:
+        # Obtener el token de acceso
+        access_token = request.json.get('accessToken')
+        
+        if not access_token:
+            logger.error('Missing accessToken')
+            return jsonify({'error': 'Missing accessToken'}), 400
+        
+        # Configurar headers para la petición al usuario
+        user_header = {
+            'Authorization': f'Bearer {access_token}'
+        }
+        
+        # Consultar la API de Pi Network para pagos pendientes
+        # Esto es una aproximación, ya que la API puede no tener este endpoint exacto
+        try:
+            payments_url = "https://api.minepi.com/v2/payments/incomplete"
+            response = requests.get(payments_url, headers=user_header)
+            
+            if response.status_code == 200:
+                payments_data = response.json()
+                logger.info(f'Found pending payments: {payments_data}')
+                return jsonify({'pendingPayments': payments_data})
+            else:
+                # Si la API no tiene el endpoint, buscar en el servidor local
+                logger.warning(f'Could not get pending payments from API: {response.text}')
+                # Aquí podrías implementar lógica para buscar pagos pendientes localmente
+                return jsonify({'pendingPayments': []})
+                
+        except Exception as api_error:
+            logger.error(f'Error checking pending payments from API: {str(api_error)}')
+            # Fallback a un método alternativo
+            return jsonify({'pendingPayments': [], 'error': str(api_error)})
+    
+    except Exception as e:
+        logger.error(f'Error checking pending payments: {str(e)}')
+        return jsonify({'error': f'Error checking pending payments: {str(e)}'}), 500
+
+@app.route('/payment/cancel-all-pending', methods=['POST'])
+def cancel_all_pending_payments():
+    try:
+        # Obtener el token de acceso
+        access_token = request.json.get('accessToken')
+        
+        if not access_token:
+            logger.error('Missing accessToken')
+            return jsonify({'error': 'Missing accessToken'}), 400
+        
+        # Configurar headers
+        user_header = {
+            'Authorization': f'Bearer {access_token}'
+        }
+        
+        server_header = {
+            'Authorization': f'Key {api_key}'
+        }
+        
+        # 1. Primero intenta obtener la lista de pagos pendientes
+        try:
+            # Intentar obtener pagos pendientes (la API puede no tener este endpoint)
+            payments_url = "https://api.minepi.com/v2/payments/incomplete"
+            response = requests.get(payments_url, headers=user_header)
+            
+            # Si la API responde correctamente
+            if response.status_code == 200:
+                payments_data = response.json()
+                logger.info(f'Found payments to cancel: {payments_data}')
+                
+                # Cancelar cada pago pendiente
+                results = []
+                for payment in payments_data:
+                    payment_id = payment.get('identifier')
+                    if payment_id:
+                        cancel_url = f"https://api.minepi.com/v2/payments/{payment_id}/cancel"
+                        cancel_response = requests.post(cancel_url, headers=server_header)
+                        
+                        if cancel_response.status_code == 200:
+                            logger.info(f'Successfully cancelled payment {payment_id}')
+                            results.append({'id': payment_id, 'status': 'cancelled'})
+                        else:
+                            logger.error(f'Failed to cancel payment {payment_id}: {cancel_response.text}')
+                            results.append({'id': payment_id, 'status': 'error', 'message': cancel_response.text})
+                
+                return jsonify({'status': 'completed', 'results': results})
+            else:
+                # API no soporta esta operación, intentar alternativa
+                logger.warning(f'API does not support listing incomplete payments: {response.text}')
+                
+                # Como no podemos obtener la lista, intentamos cancelar un pago específico si se proporciona
+                specific_payment_id = request.json.get('specificPaymentId')
+                if specific_payment_id:
+                    cancel_url = f"https://api.minepi.com/v2/payments/{specific_payment_id}/cancel"
+                    cancel_response = requests.post(cancel_url, headers=server_header)
+                    
+                    if cancel_response.status_code == 200:
+                        logger.info(f'Successfully cancelled specific payment {specific_payment_id}')
+                        return jsonify({'status': 'completed', 'message': f'Cancelled payment {specific_payment_id}'})
+                    else:
+                        logger.error(f'Failed to cancel specific payment {specific_payment_id}: {cancel_response.text}')
+                        return jsonify({'status': 'error', 'message': f'Failed to cancel payment: {cancel_response.text}'})
+                
+                # Si no hay un ID específico, informar que no podemos realizar la operación
+                return jsonify({'status': 'error', 'error': 'Cannot list or cancel pending payments through API', 'pendingPaymentId': specific_payment_id})
+                
+        except Exception as api_error:
+            logger.error(f'Error cancelling payments through API: {str(api_error)}')
+            return jsonify({'status': 'error', 'error': str(api_error)})
+    
+    except Exception as e:
+        logger.error(f'Error in cancel all pending payments: {str(e)}')
+        return jsonify({'error': f'Error cancelling payments: {str(e)}'}), 500
+
 # Rutas para el juego Simon Dice
 @app.route('/api/scores', methods=['POST'])
 def save_score():

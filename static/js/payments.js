@@ -63,49 +63,135 @@ const PaymentSystem = {
         }
         
         // Mostrar información sobre el pago incompleto
-        if (paymentStatus) paymentStatus.textContent = 'Completando pago pendiente...';
+        if (paymentStatus) paymentStatus.textContent = 'Pago pendiente encontrado';
         if (txidDisplay) txidDisplay.textContent = payment.transaction ? payment.transaction.txid : 'No disponible';
-        if (paymentResult) paymentResult.style.display = 'block';
+        if (paymentResult) {
+            paymentResult.style.display = 'block';
+            
+            // Crear botón para cancelar la transacción pendiente
+            const cancelButton = document.createElement('button');
+            cancelButton.innerHTML = '<i class="fas fa-times-circle"></i> Cancelar Transacción Pendiente';
+            cancelButton.className = 'btn btn-danger mt-2';
+            cancelButton.onclick = () => this.cancelPendingPayment(payment.identifier);
+            
+            // Crear botón para completar la transacción pendiente
+            const completeButton = document.createElement('button');
+            completeButton.innerHTML = '<i class="fas fa-check-circle"></i> Completar Transacción Pendiente';
+            completeButton.className = 'btn btn-success mt-2 ms-2';
+            completeButton.onclick = () => {
+                if (payment.transaction && payment.transaction.txid) {
+                    this.completePendingPayment(payment.identifier, payment.transaction.txid);
+                } else {
+                    alert('No se puede completar porque no hay ID de transacción.');
+                }
+            };
+            
+            // Limpiar botones anteriores si existen
+            const existingButtons = paymentResult.querySelectorAll('.pending-payment-btn');
+            existingButtons.forEach(btn => btn.remove());
+            
+            // Agregar clase para identificación
+            cancelButton.classList.add('pending-payment-btn');
+            completeButton.classList.add('pending-payment-btn');
+            
+            // Agregar botones al DOM
+            paymentResult.appendChild(cancelButton);
+            if (payment.transaction && payment.transaction.txid) {
+                paymentResult.appendChild(completeButton);
+            }
+        }
+    },
+    
+    // Cancelar un pago pendiente
+    cancelPendingPayment: function(paymentId) {
+        console.log('Intentando cancelar pago pendiente:', paymentId);
+        if (paymentStatus) paymentStatus.textContent = 'Cancelando pago pendiente...';
         
-        // Completar el pago si tiene transacción
-        if (payment.transaction && payment.transaction.txid) {
-            fetch('/payment/complete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    paymentId: payment.identifier,
-                    txid: payment.transaction.txid
-                })
+        // Notificar al servidor sobre la cancelación
+        fetch('/payment/complete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                paymentId: paymentId,
+                debug: 'cancel'
             })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Respuesta de completado de pago incompleto:', data);
-                if (paymentStatus) paymentStatus.textContent = 'Pago pendiente completado';
-                
-                // Añadir puntos bonus por donación completada anteriormente
-                if (scoreDisplay) {
-                    score += 100;
-                    scoreDisplay.textContent = score.toString();
-                }
-                
-                // Efectos de celebración si están disponibles las funciones
-                if (createParticles && simonBoard) {
-                    const rect = simonBoard.getBoundingClientRect();
-                    createParticles(rect.left + rect.width/2, rect.top + rect.height/2, '#00c853');
-                }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Respuesta de cancelación de pago pendiente:', data);
+            if (paymentStatus) paymentStatus.textContent = 'Pago pendiente cancelado';
+            
+            // Eliminar botones de cancelación/completado
+            if (paymentResult) {
+                const buttons = paymentResult.querySelectorAll('.pending-payment-btn');
+                buttons.forEach(btn => btn.remove());
                 
                 // Ocultar después de un tiempo
                 setTimeout(() => {
-                    if (paymentResult) paymentResult.style.display = 'none';
-                }, 5000);
+                    paymentResult.style.display = 'none';
+                }, 3000);
+            }
+            
+            // Recargar la página para reiniciar el estado
+            setTimeout(() => {
+                window.location.reload();
+            }, 3500);
+        })
+        .catch(error => {
+            console.error('Error al cancelar pago pendiente:', error);
+            if (paymentStatus) paymentStatus.textContent = 'Error al cancelar pago pendiente';
+        });
+    },
+    
+    // Completar un pago pendiente
+    completePendingPayment: function(paymentId, txid) {
+        console.log('Completando pago pendiente:', paymentId, txid);
+        if (paymentStatus) paymentStatus.textContent = 'Completando pago pendiente...';
+        
+        fetch('/payment/complete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                paymentId: paymentId,
+                txid: txid
             })
-            .catch(error => {
-                console.error('Error al completar pago pendiente:', error);
-                if (paymentStatus) paymentStatus.textContent = 'Error al completar pago pendiente';
-            });
-        }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Respuesta de completado de pago pendiente:', data);
+            if (paymentStatus) paymentStatus.textContent = 'Pago pendiente completado';
+            
+            // Añadir puntos bonus por donación completada
+            if (scoreDisplay) {
+                score += 100;
+                scoreDisplay.textContent = score.toString();
+            }
+            
+            // Efectos de celebración si están disponibles las funciones
+            if (createParticles && simonBoard) {
+                const rect = simonBoard.getBoundingClientRect();
+                createParticles(rect.left + rect.width/2, rect.top + rect.height/2, '#00c853');
+            }
+            
+            // Eliminar botones de cancelación/completado
+            if (paymentResult) {
+                const buttons = paymentResult.querySelectorAll('.pending-payment-btn');
+                buttons.forEach(btn => btn.remove());
+                
+                // Ocultar después de un tiempo
+                setTimeout(() => {
+                    paymentResult.style.display = 'none';
+                }, 3000);
+            }
+        })
+        .catch(error => {
+            console.error('Error al completar pago pendiente:', error);
+            if (paymentStatus) paymentStatus.textContent = 'Error al completar pago pendiente';
+        });
     },
     
     // Realizar un pago de donación
@@ -319,17 +405,66 @@ const PaymentSystem = {
         }
         
         try {
+            // Configuramos un detector de pagos pendientes más agresivo
+            let pendingPaymentFound = false;
+            
             const auth = await Pi.authenticate(['payments', 'username', 'wallet_address'], {
-                onIncompletePaymentFound: this.handleIncompletePayment.bind(this)
+                onIncompletePaymentFound: (payment) => {
+                    console.log('Pago incompleto encontrado durante autenticación:', payment);
+                    pendingPaymentFound = true;
+                    this.handleIncompletePayment(payment);
+                }
             });
             
             // Actualizar token de acceso
             currentAccessToken = auth.accessToken;
             
+            // Si no se detectó ningún pago pendiente automáticamente, verificar manualmente
+            if (!pendingPaymentFound) {
+                console.log('Verificando manualmente pagos pendientes...');
+                this.checkPendingPayments();
+            }
+            
             return auth;
         } catch (error) {
             console.error('Error en autenticación:', error);
             throw error;
+        }
+    },
+    
+    // Verificar manualmente si hay pagos pendientes
+    checkPendingPayments: async function() {
+        if (typeof Pi === 'undefined') {
+            console.error('Pi SDK no está disponible');
+            return;
+        }
+        
+        try {
+            // Esta es una solución alternativa usando el API del backend
+            fetch('/payment/check-pending', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    accessToken: currentAccessToken
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.pendingPayments && data.pendingPayments.length > 0) {
+                    console.log('Pagos pendientes encontrados manualmente:', data.pendingPayments);
+                    // Manejar el primer pago pendiente encontrado
+                    this.handleIncompletePayment(data.pendingPayments[0]);
+                } else {
+                    console.log('No se encontraron pagos pendientes manualmente');
+                }
+            })
+            .catch(error => {
+                console.error('Error al verificar pagos pendientes manualmente:', error);
+            });
+        } catch (error) {
+            console.error('Error al verificar pagos pendientes:', error);
         }
     },
     
@@ -446,6 +581,85 @@ const PaymentSystem = {
     // Actualizar el nivel actual
     setLevel: function(newLevel) {
         level = newLevel;
+    },
+    
+    // Función especial para cancelar todos los pagos pendientes
+    // Esta función se puede llamar desde la consola del navegador en caso de emergencia:
+    // PaymentSystem.forcePaymentCancellation()
+    forcePaymentCancellation: function() {
+        console.log('Intentando forzar la cancelación de todos los pagos pendientes...');
+        
+        // Crear un mensaje visible para el usuario
+        const messageDiv = document.createElement('div');
+        messageDiv.style.position = 'fixed';
+        messageDiv.style.top = '20px';
+        messageDiv.style.left = '20px';
+        messageDiv.style.right = '20px';
+        messageDiv.style.padding = '15px';
+        messageDiv.style.backgroundColor = '#f8d7da';
+        messageDiv.style.borderRadius = '5px';
+        messageDiv.style.border = '1px solid #f5c6cb';
+        messageDiv.style.color = '#721c24';
+        messageDiv.style.zIndex = '9999';
+        messageDiv.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+        messageDiv.innerHTML = '<strong>Cancelando pagos pendientes...</strong> Por favor, espere.';
+        document.body.appendChild(messageDiv);
+        
+        // Llamar al servidor para cancelar todos los pagos pendientes
+        fetch('/payment/cancel-all-pending', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                accessToken: currentAccessToken
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Respuesta de cancelación forzada:', data);
+            messageDiv.style.backgroundColor = '#d4edda';
+            messageDiv.style.border = '1px solid #c3e6cb';
+            messageDiv.style.color = '#155724';
+            messageDiv.innerHTML = '<strong>Pagos cancelados correctamente.</strong> La página se recargará en 3 segundos.';
+            
+            // Si no hay una ruta para cancelar todos los pagos, usar la alternativa
+            if (data.error && data.error.includes('not found')) {
+                // Alternativa: Cancelar un pago específico si tenemos el ID
+                if (data.pendingPaymentId) {
+                    this.cancelPendingPayment(data.pendingPaymentId);
+                    messageDiv.innerHTML = '<strong>Intentando cancelar pago pendiente específico.</strong> La página se recargará en 3 segundos.';
+                }
+            }
+            
+            // Recargar la página después de un tiempo
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
+        })
+        .catch(error => {
+            console.error('Error al forzar cancelación de pagos:', error);
+            messageDiv.innerHTML = `<strong>Error al cancelar pagos:</strong> ${error.message}. <br><br>Intente recargar la página o contactar al desarrollador.`;
+            
+            // Añadir botón para recargar
+            const reloadButton = document.createElement('button');
+            reloadButton.textContent = 'Recargar página';
+            reloadButton.style.padding = '5px 10px';
+            reloadButton.style.marginTop = '10px';
+            reloadButton.style.backgroundColor = '#007bff';
+            reloadButton.style.color = 'white';
+            reloadButton.style.border = 'none';
+            reloadButton.style.borderRadius = '3px';
+            reloadButton.style.cursor = 'pointer';
+            reloadButton.onclick = () => window.location.reload();
+            messageDiv.appendChild(document.createElement('br'));
+            messageDiv.appendChild(reloadButton);
+        });
+        
+        // También imprimir instrucciones para acceder a la página de depuración de Pi Network
+        console.log('Para resolver problemas de pagos pendientes, también puede visitar estas páginas de Pi Network:');
+        console.log('- Pi Browser Developer Tools');
+        console.log('- Pi Developer Portal (revisar logs de transacciones)');
     }
 };
 
