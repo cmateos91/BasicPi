@@ -131,19 +131,53 @@
                     metadata: { paymentId: paymentId } // Metadatos para identificar el pago
                 };
                 
-                // Solicitar el pago
-                const payment = await Pi.createPayment(paymentData);
+                // Definir los callbacks necesarios
+                const paymentCallbacks = {
+                    onReadyForServerApproval: function(paymentDTO) {
+                        console.log('Listo para aprobación del servidor:', paymentDTO);
+                        document.getElementById('paymentStatus').textContent = 'Esperando aprobación...';
+                        document.getElementById('txid').textContent = 'Pendiente';
+                        document.getElementById('paymentResult').style.display = 'block';
+                        
+                        // En un caso real, aquí haríamos una llamada al servidor para aprobar el pago
+                        // Por ahora, simulamos que el pago se aprueba automáticamente
+                    },
+                    onReadyForServerCompletion: function(paymentDTO, txid) {
+                        console.log('Listo para completar en el servidor:', paymentDTO, txid);
+                        document.getElementById('paymentStatus').textContent = 'Completado';
+                        document.getElementById('txid').textContent = txid || 'No disponible';
+                        
+                        // En un caso real, aquí haríamos una llamada al servidor para completar el pago
+                    },
+                    onCancel: function(paymentDTO) {
+                        console.log('Pago cancelado:', paymentDTO);
+                        document.getElementById('paymentStatus').textContent = 'Cancelado';
+                        document.getElementById('paymentBtn').disabled = false;
+                        document.getElementById('paymentBtn').textContent = 'Realizar pago de prueba (1 Pi)';
+                    },
+                    onError: function(error, paymentDTO) {
+                        console.error('Error en el pago:', error, paymentDTO);
+                        document.getElementById('paymentStatus').textContent = 'Error: ' + error.message;
+                        document.getElementById('paymentBtn').disabled = false;
+                        document.getElementById('paymentBtn').textContent = 'Realizar pago de prueba (1 Pi)';
+                    },
+                    onIncompletePaymentFound: function(paymentDTO) {
+                        console.log('Pago incompleto encontrado:', paymentDTO);
+                        document.getElementById('paymentStatus').textContent = 'Pago incompleto encontrado';
+                        document.getElementById('txid').textContent = paymentDTO.transaction ? paymentDTO.transaction.txid : 'No disponible';
+                        document.getElementById('paymentResult').style.display = 'block';
+                        
+                        // En un caso real, aquí manejaríamos el pago incompleto
+                    }
+                };
                 
-                // Mostrar el resultado del pago
-                document.getElementById('paymentStatus').textContent = payment.status;
-                document.getElementById('txid').textContent = payment.transaction && payment.transaction.txid ? payment.transaction.txid : 'Pendiente';
-                document.getElementById('paymentResult').style.display = 'block';
+                // Solicitar el pago con los callbacks
+                Pi.createPayment(paymentData, paymentCallbacks);
                 
-                // Restaurar el botón
-                document.getElementById('paymentBtn').disabled = false;
-                document.getElementById('paymentBtn').textContent = 'Realizar pago de prueba (1 Pi)';
+                // Nota: No necesitamos mostrar el resultado aquí porque lo haremos en los callbacks
+                // Los callbacks se encargarán de actualizar la interfaz de usuario según el estado del pago
                 
-                console.log('Resultado del pago:', payment);
+                console.log('Iniciando proceso de pago...');
                 
             } catch (error) {
                 console.error('Error al realizar el pago:', error);
