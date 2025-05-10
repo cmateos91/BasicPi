@@ -347,15 +347,47 @@ document.addEventListener('DOMContentLoaded', function() {
     // Verificar autenticación al cargar la página y configurar el sistema de pagos
     async function initGame() {
         try {
-            // Usar el módulo de pagos para verificar autenticación
-            const auth = await PaymentSystem.checkAuthentication();
+            // Reiniciar el SDK de Pi para asegurar un estado limpio
+            Pi.init({ version: "2.0", sandbox: true });
             
-            if (!auth) {
-                // Si checkAuthentication devuelve null, ya habrá redirigido a la página de inicio
-                return;
+            // Configurar los permisos que necesitamos
+            const scopes = ['payments'];
+            
+            // Función para manejar pagos incompletos (pasada directamente, no como método de objeto)
+            function handleIncompletePayment(payment) {
+                console.log('Pago incompleto encontrado en autenticación:', payment);
+                PaymentSystem.handleIncompletePayment(payment);
             }
             
-            console.log('Autenticación completada:', auth.user.username);
+            // Autenticar manualmente
+            try {
+                const auth = await Pi.authenticate(scopes, handleIncompletePayment);
+                
+                // Almacenar el token para los pagos
+                PaymentSystem.setAccessToken(auth.accessToken);
+                
+                console.log('Autenticación completada:', auth.user.username);
+                
+                // Verificar pagos pendientes adicionales
+                PaymentSystem.checkPendingPayments();
+            } catch (authError) {
+                console.error('Error en autenticación inicial:', authError);
+                
+                // Intentar cargar datos de sesión existentes
+                const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                if (userData && userData.accessToken) {
+                    PaymentSystem.setAccessToken(userData.accessToken);
+                    console.log('Usando token de sesión existente');
+                }
+            }
+            
+            // Forzar cancelación de pagos pendientes si hay problemas
+            if (window.location.search.includes('force_cancel=true')) {
+                console.log('Forzando cancelación de pagos pendientes por parámetro URL');
+                setTimeout(() => {
+                    PaymentSystem.forcePaymentCancellation();
+                }, 1000);
+            }
             
             // Todo listo para iniciar el juego
         } catch (error) {

@@ -226,9 +226,23 @@ const PaymentSystem = {
                 }
             };
             
+            // Función para manejar pagos incompletos directa (no como método)
+            const handleIncompletePayment = (payment) => {
+                console.log('Pago incompleto encontrado durante createPayment:', payment);
+                this.handleIncompletePayment(payment);
+                
+                // Restaurar estado del botón
+                if (donationButton) {
+                    donationButton.disabled = false;
+                    donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
+                }
+                
+                return false; // Indicar que no se debe continuar con el pago actual
+            };
+            
             // Callbacks para el proceso de pago
             const paymentCallbacks = {
-                onReadyForServerApproval: function(paymentDTO) {
+                onReadyForServerApproval: (paymentDTO) => {
                     console.log('Listo para aprobación del servidor:', paymentDTO);
                     if (paymentStatus) paymentStatus.textContent = 'Esperando aprobación...';
                     if (txidDisplay) txidDisplay.textContent = 'Pendiente';
@@ -259,7 +273,7 @@ const PaymentSystem = {
                         }
                     });
                 },
-                onReadyForServerCompletion: function(paymentDTO, txid) {
+                onReadyForServerCompletion: (paymentDTO, txid) => {
                     console.log('Listo para completar en el servidor:', paymentDTO, txid);
                     if (paymentStatus) paymentStatus.textContent = 'Completando...';
                     if (txidDisplay) txidDisplay.textContent = txid || 'No disponible';
@@ -320,7 +334,7 @@ const PaymentSystem = {
                         }
                     });
                 },
-                onCancel: function(paymentDTO) {
+                onCancel: (paymentDTO) => {
                     console.log('Pago cancelado:', paymentDTO);
                     if (paymentStatus) paymentStatus.textContent = 'Cancelado';
                     if (donationButton) {
@@ -349,9 +363,35 @@ const PaymentSystem = {
                         console.error('Error al notificar cancelación:', error);
                     });
                 },
-                onError: function(error, paymentDTO) {
+                onError: (error, paymentDTO) => {
                     console.error('Error en el pago:', error, paymentDTO);
-                    if (paymentStatus) paymentStatus.textContent = 'Error: ' + (error.message || 'Desconocido');
+                    if (paymentStatus) {
+                        // Verificar si hay un error de pago pendiente
+                        if (error && error.message && error.message.includes('pending payment')) {
+                            paymentStatus.textContent = 'Hay un pago pendiente que debe resolverse primero';
+                            
+                            // Mostrar instrucciones para resolver el problema
+                            const helpText = document.createElement('div');
+                            helpText.className = 'alert alert-warning mt-2';
+                            helpText.innerHTML = `
+                                <p><strong>Tienes un pago pendiente que debe ser resuelto.</strong></p>
+                                <p>Para resolverlo:</p>
+                                <ol>
+                                    <li>Recarga la página y deja que el sistema resuelva el pago pendiente, o</li>
+                                    <li>Haz clic <a href="javascript:void(0)" onclick="PaymentSystem.forcePaymentCancellation()">aquí</a> para intentar cancelar el pago pendiente.</li>
+                                </ol>
+                            `;
+                            
+                            // Añadir al DOM si no existe ya
+                            if (!document.getElementById('payment-help')) {
+                                helpText.id = 'payment-help';
+                                paymentResult.appendChild(helpText);
+                            }
+                        } else {
+                            paymentStatus.textContent = 'Error: ' + (error.message || 'Desconocido');
+                        }
+                    }
+                    
                     if (donationButton) {
                         donationButton.disabled = false;
                         donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
@@ -376,15 +416,35 @@ const PaymentSystem = {
                 }
             };
             
-            // Crear el pago
-            if (typeof Pi !== 'undefined') {
-                Pi.createPayment(paymentData, paymentCallbacks);
-            } else {
-                console.error('Pi SDK no está disponible');
+            // Verificar pagos pendientes antes de crear uno nuevo
+            // Primera opción: intenta buscar pagos pendientes a través del SDK
+            try {
+                const scopes = ['payments'];
+                
+                // Intenta autenticar de nuevo con una función de callback directa
+                await Pi.authenticate(scopes, handleIncompletePayment);
+                
+                // Si llegamos aquí sin errores, crear el pago
+                if (typeof Pi !== 'undefined') {
+                    Pi.createPayment(paymentData, paymentCallbacks);
+                } else {
+                    console.error('Pi SDK no está disponible');
+                    if (donationButton) {
+                        donationButton.disabled = false;
+                        donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
+                    }
+                }
+            } catch (error) {
+                console.error('Error al verificar pagos pendientes antes de crear pago:', error);
+                
+                // Restaurar botón
                 if (donationButton) {
                     donationButton.disabled = false;
                     donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
                 }
+                
+                // Mostrar error
+                alert('No se pudo crear el pago: ' + error.message);
             }
             
         } catch (error) {

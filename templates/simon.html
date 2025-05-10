@@ -61,6 +61,29 @@
                     <h6><i class="fas fa-receipt"></i> ID de transacción: <span id="txid"></span></h6>
                 </div>
             </div>
+            
+            <!-- Botón de ayuda para problemas de pago -->
+            <div class="mt-2" id="payment-help-container">
+                <button id="force-cancel-button" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-exclamation-triangle"></i> ¿Problemas con pagos?
+                </button>
+                <script>
+                    document.getElementById('force-cancel-button').addEventListener('click', function() {
+                        // Primera opción: intentar la función directamente
+                        try {
+                            if (typeof PaymentSystem !== 'undefined' && PaymentSystem.forcePaymentCancellation) {
+                                PaymentSystem.forcePaymentCancellation();
+                            } else {
+                                // Segunda opción: recargar con parámetro especial
+                                window.location.href = window.location.pathname + '?force_cancel=true';
+                            }
+                        } catch (e) {
+                            // Tercera opción si todo falla: recargar con parámetro especial
+                            window.location.href = window.location.pathname + '?force_cancel=true';
+                        }
+                    });
+                </script>
+            </div>
         </div>
     </div>
 
