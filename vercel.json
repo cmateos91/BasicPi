@@ -15,9 +15,5 @@
       "src": "/(.*)",
       "dest": "index.html"
     }
-  ],
-  "env": {
-    "PI_API_KEY": "hhbtt9auvbgmefnnojyhudk3kcvlm3oqvl5gsxcss0php9sq3lw0ro5cd8frtsfs",
-    "FLASK_SECRET_KEY": "7cc5b0b6110739478e149e0eb1b8fb070a2a9ecfd94b6b1f91105eae4b392eedd4063184f048ec5ac31f5cfddd953e39022614bbd9a3d020eb5e7d796c11803a"
-  }
+  ]
 }

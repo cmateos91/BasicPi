@@ -1,17 +1,12 @@
-from flask import Flask, render_template, request, jsonify
-from flask_bootstrap import Bootstrap
+from flask import Flask, request, jsonify
 import requests
 import os
-from dotenv import load_dotenv
 import simplejson as json
 import logging
 
 # Configurar logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-# Cargar variables de entorno
-load_dotenv()
 
 # Configurar headers para la API de Pi Network
 api_key = os.getenv('PI_API_KEY')
@@ -24,7 +19,6 @@ server_header = {
 }
 
 app = Flask(__name__)
-Bootstrap(app)
 
 # Configuración de Flask
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-key-change-in-production')
