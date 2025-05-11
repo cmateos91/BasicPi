@@ -65,7 +65,7 @@ def get_wallet_info():
         }
 
         # Hacer la petición a la API de Pi Network
-        wallet_url = "https://api.minepi.com/v2/wallet"
+        wallet_url = "https://api.minepi.com/v1/me"
         response = requests.get(wallet_url, headers=user_header)
 
         if response.status_code != 200:

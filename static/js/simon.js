@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const scoreDisplay = document.getElementById('score');
     const usernameDisplay = document.getElementById('username-display');
     const balanceDisplay = document.getElementById('balance-display');
+    const recordsDisplay = document.getElementById('records-display');
     const logoutButton = document.getElementById('logout-button');
     const donationButton = document.getElementById('donation-button');
     const paymentResult = document.getElementById('paymentResult');
@@ -45,12 +46,19 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Elemento balance-display encontrado:', balanceDisplay);
     }
     
+    if (!recordsDisplay) {
+        console.error('Elemento records-display no encontrado');
+    } else {
+        console.log('Elemento records-display encontrado:', recordsDisplay);
+    }
+    
     // Variable para contener función de actualización de puntuaciones blockchain
     let recordScoreOnBlockchain = null;
     
     // Exportar elementos importantes para acceso global
     window.usernameDisplay = usernameDisplay;
     window.balanceDisplay = balanceDisplay;
+    window.recordsDisplay = recordsDisplay;
     
     // Variables del juego
     const buttons = [greenBtn, redBtn, yellowBtn, blueBtn];
@@ -255,6 +263,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 simonBoard.style.opacity = '1';
             }, 1500);
             
+            // Actualizar estado de juego en PaymentSystem cuando pierde
+            PaymentSystem.updateGameData({
+                score: score,
+                level: level,
+                lost: true
+            });
+
             // Mensaje personalizado según el nivel alcanzado
             let message = '¡Juego terminado! ';
             
@@ -380,6 +395,7 @@ document.addEventListener('DOMContentLoaded', function() {
         donationButton: donationButton,
         simonBoard: simonBoard,
         scoreDisplay: scoreDisplay,
+        recordsDisplay: recordsDisplay,
         createParticles: createParticles
     });
     
@@ -586,12 +602,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const resetScoresButton = document.getElementById('reset-scores-button');
     if (resetScoresButton) {
         resetScoresButton.addEventListener('click', function() {
-            if (confirm('¿Estás seguro de que quieres reiniciar tus puntuaciones locales? Esta acción no se puede deshacer.')) {
-                // Reiniciar el sistema de puntuaciones
-                if (window.ScoreSystem) {
-                    window.ScoreSystem.reset();
-                    alert('Puntuaciones locales reiniciadas correctamente.');
-                }
+            // Confirmar antes de reiniciar
+            if (confirm('¿Estás seguro de que quieres reiniciar todas las puntuaciones locales?')) {
+                // Eliminar todas las puntuaciones guardadas
+                localStorage.removeItem('simonScores');
+                // Eliminar el mejor puntaje del usuario
+                localStorage.removeItem('userBestScore');
+                // Eliminar contador de registros
+                const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                userData.records = 0;
+                localStorage.setItem('piUserData', JSON.stringify(userData));
+                // Actualizar la interfaz
+                updateScoreboard();
+                updateBestScore();
+                updateUserInterface(); // Actualizar el contador de registros
+                // Mostrar mensaje de éxito
+                alert('Puntuaciones locales y contador de registros reiniciados exitosamente');
             }
         });
     }
@@ -599,16 +625,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Iniciar el juego
     initGame();
     
-    // Función auxiliar para actualizar la interfaz de usuario con el nombre y balance
+    // Función auxiliar para actualizar la interfaz de usuario con el nombre, balance y registros
     function updateUserInterface() {
         // Intentar obtener datos del usuario desde localStorage
         try {
             // Si el nombre de usuario ya está bloqueado, no hacer nada
             if (usernameDisplay && usernameDisplay.dataset.usernameLocked === 'true') {
-                // Solo actualizar el balance
+                // Solo actualizar el balance y registros
                 const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
                 if (userData && userData.balance && balanceDisplay) {
                     balanceDisplay.textContent = userData.balance;
+                }
+                if (userData && userData.records && recordsDisplay) {
+                    recordsDisplay.textContent = userData.records;
                 }
                 return;
             }
@@ -631,6 +660,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (userData && userData.balance && balanceDisplay) {
                 balanceDisplay.textContent = userData.balance;
                 console.log('UI actualizada: balance =', userData.balance);
+            }
+            
+            // Actualizar contador de registros si está disponible
+            if (userData && userData.records && recordsDisplay) {
+                recordsDisplay.textContent = userData.records;
+                console.log('UI actualizada: registros =', userData.records);
             }
         } catch (error) {
             console.error('Error al actualizar la interfaz de usuario:', error);

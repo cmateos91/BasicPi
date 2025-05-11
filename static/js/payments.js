@@ -14,6 +14,7 @@ let simonBoard = null; // Referencia al tablero para efectos visuales
 let score = 0; // Puntuación actual del juego
 let level = 0; // Nivel actual del juego
 let scoreDisplay = null; // Elemento para mostrar puntuación
+let recordsDisplay = null; // Elemento para mostrar registros
 
 // Función para crear partículas (referencia desde simon.js)
 let createParticles = null;
@@ -21,7 +22,7 @@ let createParticles = null;
 // Configuración del sistema de pagos
 const PaymentSystem = {
     // Inicializar el sistema de pagos
-    init: function(config) {
+    init: async function(config) {
         // Almacenar las referencias a los elementos DOM
         currentAccessToken = config.accessToken || null;
         paymentStatus = config.paymentStatus || null;
@@ -30,10 +31,17 @@ const PaymentSystem = {
         donationButton = config.donationButton || null;
         simonBoard = config.simonBoard || null;
         scoreDisplay = config.scoreDisplay || null;
+        recordsDisplay = config.recordsDisplay || null;
         
-        // Configurar el callback para pagos incompletos
+        // Configurar el SDK de Pi y los callbacks globales
         if (typeof Pi !== 'undefined') {
             Pi.init({ version: "2.0", sandbox: true });
+            
+            // Configurar el detector de pagos pendientes
+            Pi.onIncompletePaymentFound = (payment) => {
+                console.log('Pago incompleto encontrado:', payment);
+                this.handleIncompletePayment(payment);
+            };
         }
         
         // Configurar callbacks para el botón de donación
@@ -49,8 +57,25 @@ const PaymentSystem = {
     
     // Actualizar datos del juego para el sistema de pagos
     updateGameData: function(gameData) {
-        score = gameData.score || 0;
-        level = gameData.level || 0;
+        if (gameData && gameData.score !== undefined) {
+            score = gameData.score;
+        }
+        if (gameData && gameData.level !== undefined) {
+            level = gameData.level;
+        }
+        if (gameData && gameData.records !== undefined) {
+            // Actualizar localStorage con el nuevo contador de registros
+            const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+            userData.records = gameData.records;
+            localStorage.setItem('piUserData', JSON.stringify(userData));
+            // Actualizar la interfaz
+            if (recordsDisplay) {
+                recordsDisplay.textContent = gameData.records;
+            }
+        }
+        if (gameData && gameData.lost !== undefined && gameData.lost) {
+            this.decreaseRegistrationCounter();
+        }
     },
     
     // Manejar pagos incompletos
@@ -145,10 +170,81 @@ const PaymentSystem = {
         });
     },
     
+    // Aprobar un pago desde el servidor
+    approvePayment: function(paymentId) {
+        console.log('Aprobando pago desde el servidor:', paymentId);
+        if (paymentStatus) paymentStatus.textContent = 'Aprobando pago...';
+        
+        // Evitar múltiples llamadas para el mismo ID de pago
+        if (paymentCallbacks[paymentId] && paymentCallbacks[paymentId].approvalInProgress) {
+            console.log('Aprobación ya en progreso para:', paymentId);
+            return;
+        }
+        
+        // Marcar como en progreso
+        if (!paymentCallbacks[paymentId]) {
+            paymentCallbacks[paymentId] = {};
+        }
+        paymentCallbacks[paymentId].approvalInProgress = true;
+        
+        // Limpiar cualquier temporizador existente para evitar múltiples llamadas
+        if (paymentCallbacks[paymentId].approvalTimer) {
+            clearTimeout(paymentCallbacks[paymentId].approvalTimer);
+        }
+        
+        // Usar un temporizador para evitar múltiples llamadas rápidas
+        paymentCallbacks[paymentId].approvalTimer = setTimeout(() => {
+        
+        fetch('/payment/approve', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                paymentId: paymentId,
+                accessToken: currentAccessToken
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Respuesta de aprobación de pago:', data);
+            // Marcar como completado
+            if (paymentCallbacks[paymentId]) {
+                paymentCallbacks[paymentId].approvalInProgress = false;
+            }
+            
+            if (data.error) {
+                console.error('Error en la aprobación del pago:', data.error);
+                if (paymentStatus) paymentStatus.textContent = 'Error en la aprobación del pago';
+            }
+        })
+        .catch(error => {
+            console.error('Error al aprobar pago:', error);
+            if (paymentStatus) paymentStatus.textContent = 'Error al aprobar pago';
+            // Marcar como completado incluso en caso de error
+            if (paymentCallbacks[paymentId]) {
+                paymentCallbacks[paymentId].approvalInProgress = false;
+            }
+        });
+        }, 500); // Esperar 500ms antes de enviar la solicitud para evitar múltiples llamadas
+    },
+    
     // Completar un pago pendiente
     completePendingPayment: function(paymentId, txid) {
         console.log('Completando pago pendiente:', paymentId, txid);
         if (paymentStatus) paymentStatus.textContent = 'Completando pago pendiente...';
+        
+        // Evitar múltiples llamadas para el mismo ID de pago
+        if (paymentCallbacks[paymentId] && paymentCallbacks[paymentId].completionInProgress) {
+            console.log('Completado ya en progreso para:', paymentId);
+            return;
+        }
+        
+        // Marcar como en progreso
+        if (!paymentCallbacks[paymentId]) {
+            paymentCallbacks[paymentId] = {};
+        }
+        paymentCallbacks[paymentId].completionInProgress = true;
         
         fetch('/payment/complete', {
             method: 'POST',
@@ -163,6 +259,11 @@ const PaymentSystem = {
         .then(response => response.json())
         .then(data => {
             console.log('Respuesta de completado de pago pendiente:', data);
+            // Marcar como completado
+            if (paymentCallbacks[paymentId]) {
+                paymentCallbacks[paymentId].completionInProgress = false;
+            }
+            
             if (paymentStatus) paymentStatus.textContent = 'Pago pendiente completado';
             
             // Añadir puntos bonus por donación completada
@@ -203,351 +304,243 @@ const PaymentSystem = {
         .catch(error => {
             console.error('Error al completar pago pendiente:', error);
             if (paymentStatus) paymentStatus.textContent = 'Error al completar pago pendiente';
+            // Marcar como completado incluso en caso de error
+            if (paymentCallbacks[paymentId]) {
+                paymentCallbacks[paymentId].completionInProgress = false;
+            }
+        });
+    },
+    
+    // Completar un pago
+    // Disminuir el contador de registros cuando el usuario pierde
+    decreaseRegistrationCounter: function() {
+        const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+        if (userData.records && userData.records > 0) {
+            userData.records--;
+            localStorage.setItem('piUserData', JSON.stringify(userData));
+            if (recordsDisplay) {
+                recordsDisplay.textContent = userData.records;
+            }
+        }
+    },
+
+    completePayment: function(paymentId, txid) {
+        console.log('Completando pago:', paymentId, txid);
+        if (paymentStatus) paymentStatus.textContent = 'Completando pago...';
+        
+        // Evitar múltiples llamadas para el mismo ID de pago
+        if (paymentCallbacks[paymentId] && paymentCallbacks[paymentId].completionInProgress) {
+            console.log('Completado ya en progreso para:', paymentId);
+            return;
+        }
+        
+        // Marcar como en progreso
+        if (!paymentCallbacks[paymentId]) {
+            paymentCallbacks[paymentId] = {};
+        }
+        paymentCallbacks[paymentId].completionInProgress = true;
+        
+        fetch('/payment/complete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                paymentId: paymentId,
+                txid: txid
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Respuesta de completado de pago:', data);
+            // Marcar como completado
+            if (paymentCallbacks[paymentId]) {
+                paymentCallbacks[paymentId].completionInProgress = false;
+            }
+            
+            if (data.error) {
+                console.error('Error en el completado del pago:', data.error);
+                if (paymentStatus) paymentStatus.textContent = 'Error al completar el pago';
+            } else {
+                if (paymentStatus) paymentStatus.textContent = 'Pago completado';
+                // Actualizar contador de registros
+                const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                userData.records = (userData.records || 0) + 5;
+                localStorage.setItem('piUserData', JSON.stringify(userData));
+                if (recordsDisplay) {
+                    recordsDisplay.textContent = userData.records;
+                }
+                // Mostrar efectos visuales
+                if (simonBoard && createParticles) {
+                    const rect = simonBoard.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    createParticles(centerX, centerY, '#8c52ff', 30, 150);
+                }
+                
+                // Añadir puntos bonus por donación completada
+                if (scoreDisplay) {
+                    const bonusPoints = 100 + (level > 0 ? level * 5 : 0);
+                    score += bonusPoints;
+                    scoreDisplay.textContent = score.toString();
+                    
+                    // Registrar puntuación en blockchain si está disponible el sistema
+                    if (window.ScoreSystem) {
+                        window.ScoreSystem.recordScoreOnBlockchain(score, level)
+                            .then(() => {
+                                console.log('Puntuación por donación registrada en blockchain');
+                            })
+                            .catch(err => {
+                                console.error('Error al registrar puntuación por donación:', err);
+                            });
+                    }
+                }
+            }
+            
+            // Restaurar botón
+            if (donationButton) {
+                donationButton.disabled = false;
+                donationButton.innerHTML = '<i class="fas fa-save"></i> Guardar 5 registros';
+            }
+        })
+        .catch(error => {
+            console.error('Error al completar pago:', error);
+            if (paymentStatus) paymentStatus.textContent = 'Error al completar pago';
+            // Marcar como completado incluso en caso de error
+            if (paymentCallbacks[paymentId]) {
+                paymentCallbacks[paymentId].completionInProgress = false;
+            }
+            
+            // Restaurar botón
+            if (donationButton) {
+                donationButton.disabled = false;
+                donationButton.innerHTML = '<i class="fas fa-save"></i> Guardar 5 registros';
+            }
         });
     },
     
     // Realizar un pago de donación
     makePayment: async function(config = {}) {
         try {
-            // Parámetros opcionales (se pueden pasar en la llamada a la función)
-            const amount = config.amount || 1;
-            const memo = config.memo || "Donación para SimonDice";
-            const metadata = config.metadata || {};
-            const onSuccess = config.onSuccess || null;
-            const gameScore = config.gameScore || score;
-            const maxLevel = config.maxLevel || level;
-            
-            // Deshabilitar botón mientras se procesa
+            // Verificar autenticación
+            if (!currentAccessToken) {
+                const auth = await this.authenticate();
+                if (!auth) {
+                    throw new Error('Autenticación fallida');
+                }
+            }
+
+            // Obtener datos del juego
+            const gameData = {
+                score: score,
+                level: level
+            };
+
+            // Actualizar el botón de donación
             if (donationButton) {
                 donationButton.disabled = true;
-                donationButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+                donationButton.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Procesando...';
             }
-            
-            // Crear un identificador único para el pago
-            const paymentId = 'donation_' + Date.now();
-            
-            // Configurar el pago
-            const paymentData = {
-                amount: amount,
-                memo: memo,
-                metadata: { 
-                    paymentId: paymentId,
-                    gameScore: gameScore,
-                    maxLevel: maxLevel,
-                    ...metadata
-                }
-            };
-            
-            // Función para manejar pagos incompletos directa (no como método)
-            const handleIncompletePayment = (payment) => {
-                console.log('Pago incompleto encontrado durante createPayment:', payment);
-                this.handleIncompletePayment(payment);
-                
-                // Restaurar estado del botón
-                if (donationButton) {
-                    donationButton.disabled = false;
-                    donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
-                }
-                
-                return false; // Indicar que no se debe continuar con el pago actual
-            };
-            
-            // Callbacks para el proceso de pago
-            const paymentCallbacks = {
-                onReadyForServerApproval: (paymentDTO) => {
-                    console.log('Listo para aprobación del servidor:', paymentDTO);
-                    if (paymentStatus) paymentStatus.textContent = 'Esperando aprobación...';
-                    if (txidDisplay) txidDisplay.textContent = 'Pendiente';
-                    if (paymentResult) paymentResult.style.display = 'block';
-                    
-                    // Llamar al servidor para aprobar el pago
-                    fetch('/payment/approve', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ 
-                            paymentId: paymentDTO,
-                            accessToken: currentAccessToken
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Respuesta de aprobación:', data);
-                        if (paymentStatus) paymentStatus.textContent = 'Aprobado, esperando confirmación...';
-                    })
-                    .catch(error => {
-                        console.error('Error al aprobar el pago:', error);
-                        if (paymentStatus) paymentStatus.textContent = 'Error al aprobar el pago';
+
+            // Crear pago con los callbacks requeridos
+            const payment = await Pi.createPayment(
+                {
+                    amount: 1,
+                    currency: 'PI',
+                    memo: "Guardar 5 registros",
+                    metadata: {
+                        score: score,
+                        level: level,
+                        ...config.metadata
+                    }
+                },
+                {
+                    // Callback cuando el pago está listo para aprobación del servidor
+                    onReadyForServerApproval: (paymentId) => {
+                        console.log("Pago listo para aprobación del servidor:", paymentId);
+                        // Enviar el ID de pago al servidor para aprobación
+                        this.approvePayment(paymentId);
+                    },
+                    // Callback cuando el pago está listo para completarse en el servidor
+                    onReadyForServerCompletion: (paymentId, txid) => {
+                        console.log("Pago listo para completarse:", paymentId, txid);
+                        // Enviar el ID de pago y txid al servidor para completar
+                        this.completePayment(paymentId, txid);
+                    },
+                    // Callback cuando el usuario cancela el pago
+                    onCancel: (paymentId) => {
+                        console.log("Pago cancelado:", paymentId);
+                        // Restaurar botón
                         if (donationButton) {
                             donationButton.disabled = false;
-                            donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
+                            donationButton.innerHTML = '<i class="fas fa-save"></i> Guardar 5 registros';
                         }
-                    });
-                },
-                onReadyForServerCompletion: (paymentDTO, txid) => {
-                    console.log('Listo para completar en el servidor:', paymentDTO, txid);
-                    if (paymentStatus) paymentStatus.textContent = 'Completando...';
-                    if (txidDisplay) txidDisplay.textContent = txid || 'No disponible';
-                    
-                    // Llamar al servidor para completar el pago
-                    fetch('/payment/complete', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ 
-                            paymentId: paymentDTO,
-                            txid: txid
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Respuesta de completado:', data);
-                        if (paymentStatus) paymentStatus.textContent = 'Completado - ¡Gracias por tu donación!';
-                        
-                        // Agregar puntos bonus por donación
-                        if (scoreDisplay) {
-                            const bonusPoints = 100 + (level > 0 ? level * 5 : 0);
-                            score += bonusPoints;
-                            scoreDisplay.textContent = score.toString();
-                            
-                            // Registrar puntuación en blockchain si está disponible el sistema
-                            if (window.ScoreSystem) {
-                                window.ScoreSystem.recordScoreOnBlockchain(score, level)
-                                    .then(() => {
-                                        console.log('Puntuación por donación registrada en blockchain');
-                                    })
-                                    .catch(err => {
-                                        console.error('Error al registrar puntuación por donación:', err);
-                                    });
-                            }
-                        }
-                        
-                        // Efectos de celebración
-                        if (createParticles && simonBoard) {
-                            const rect = simonBoard.getBoundingClientRect();
-                            createParticles(rect.left + rect.width/2, rect.top + rect.height/2, '#00c853');
-                        }
-                        
-                        // Ejecutar callback de éxito si se proporcionó
-                        if (typeof onSuccess === 'function') {
-                            onSuccess(data);
-                        }
-                        
-                        // Restaurar botón después de un tiempo
-                        setTimeout(() => {
-                            if (donationButton) {
-                                donationButton.disabled = false;
-                                donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
-                            }
-                            
-                            // Ocultar resultado de pago
-                            setTimeout(() => {
-                                if (paymentResult) paymentResult.style.display = 'none';
-                            }, 3000);
-                        }, 1000);
-                    })
-                    .catch(error => {
-                        console.error('Error al completar el pago:', error);
-                        if (paymentStatus) paymentStatus.textContent = 'Error al completar el pago';
+                    },
+                    // Callback cuando ocurre un error
+                    onError: (error, payment) => {
+                        console.error("Error en el pago:", error, payment);
+                        // Restaurar botón
                         if (donationButton) {
                             donationButton.disabled = false;
-                            donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
-                        }
-                    });
-                },
-                onCancel: (paymentDTO) => {
-                    console.log('Pago cancelado:', paymentDTO);
-                    if (paymentStatus) paymentStatus.textContent = 'Cancelado';
-                    if (donationButton) {
-                        donationButton.disabled = false;
-                        donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
-                    }
-                    
-                    // Ocultar resultado después de un tiempo
-                    setTimeout(() => {
-                        if (paymentResult) paymentResult.style.display = 'none';
-                    }, 3000);
-                    
-                    // Notificar al servidor sobre la cancelación
-                    fetch('/payment/complete', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ 
-                            paymentId: paymentDTO,
-                            debug: 'cancel'
-                        })
-                    })
-                    .then(response => response.json())
-                    .catch(error => {
-                        console.error('Error al notificar cancelación:', error);
-                    });
-                },
-                onError: (error, paymentDTO) => {
-                    console.error('Error en el pago:', error, paymentDTO);
-                    if (paymentStatus) {
-                        // Verificar si hay un error de pago pendiente
-                        if (error && error.message && error.message.includes('pending payment')) {
-                            paymentStatus.textContent = 'Hay un pago pendiente que debe resolverse primero';
-                            
-                            // Mostrar instrucciones para resolver el problema
-                            const helpText = document.createElement('div');
-                            helpText.className = 'alert alert-warning mt-2';
-                            helpText.innerHTML = `
-                                <p><strong>Tienes un pago pendiente que debe ser resuelto.</strong></p>
-                                <p>Para resolverlo:</p>
-                                <ol>
-                                    <li>Recarga la página y deja que el sistema resuelva el pago pendiente, o</li>
-                                    <li>Haz clic <a href="javascript:void(0)" onclick="PaymentSystem.forcePaymentCancellation()">aquí</a> para intentar cancelar el pago pendiente.</li>
-                                </ol>
-                            `;
-                            
-                            // Añadir al DOM si no existe ya
-                            if (!document.getElementById('payment-help')) {
-                                helpText.id = 'payment-help';
-                                paymentResult.appendChild(helpText);
-                            }
-                        } else {
-                            paymentStatus.textContent = 'Error: ' + (error.message || 'Desconocido');
+                            donationButton.innerHTML = '<i class="fas fa-save"></i> Guardar 5 registros';
                         }
                     }
-                    
-                    if (donationButton) {
-                        donationButton.disabled = false;
-                        donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
-                    }
-                    
-                    // Notificar al servidor sobre el error
-                    fetch('/payment/error', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ 
-                            paymentDTO: paymentDTO,
-                            paymentId: paymentDTO,
-                            error: error.message || 'Error desconocido'
-                        })
-                    })
-                    .then(response => response.json())
-                    .catch(error => {
-                        console.error('Error al notificar error:', error);
-                    });
                 }
-            };
-            
-            // Verificar pagos pendientes antes de crear uno nuevo
-            // Primera opción: intenta buscar pagos pendientes a través del SDK
-            try {
-                const scopes = ['payments'];
-                
-                // Intenta autenticar de nuevo con una función de callback directa
-                await Pi.authenticate(scopes, handleIncompletePayment);
-                
-                // Si llegamos aquí sin errores, crear el pago
-                if (typeof Pi !== 'undefined') {
-                    Pi.createPayment(paymentData, paymentCallbacks);
-                } else {
-                    console.error('Pi SDK no está disponible');
-                    if (donationButton) {
-                        donationButton.disabled = false;
-                        donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
-                    }
-                }
-            } catch (error) {
-                console.error('Error al verificar pagos pendientes antes de crear pago:', error);
-                
-                // Restaurar botón
-                if (donationButton) {
-                    donationButton.disabled = false;
-                    donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
-                }
-                
-                // Mostrar error
-                alert('No se pudo crear el pago: ' + error.message);
-            }
-            
+            );
+
+            return payment;
+
         } catch (error) {
             console.error('Error al realizar el pago:', error);
-            alert('Error al realizar el pago: ' + error.message);
+            // Restaurar botón
             if (donationButton) {
                 donationButton.disabled = false;
-                donationButton.innerHTML = '<i class="fas fa-donate"></i> Donar 1 Pi';
+                donationButton.innerHTML = '<i class="fas fa-save"></i> Guardar 5 registros';
             }
         }
     },
     
-    // Función de autenticación con Pi Network
+    // Autenticar con Pi Network
     authenticate: async function() {
-        if (typeof Pi === 'undefined') {
-            console.error('Pi SDK no está disponible');
-            throw new Error('Pi SDK no está disponible');
-        }
-        
         try {
-            // Configuramos un detector de pagos pendientes más agresivo
-            let pendingPaymentFound = false;
+            console.log('Iniciando autenticación con Pi Network...');
+            const scopes = ['payments', 'username'];
             
-            const auth = await Pi.authenticate(['payments', 'username', 'wallet_address'], {
-                onIncompletePaymentFound: (payment) => {
-                    console.log('Pago incompleto encontrado durante autenticación:', payment);
-                    pendingPaymentFound = true;
-                    this.handleIncompletePayment(payment);
+            // Función para manejar pagos incompletos durante la autenticación
+            const handleIncompletePayment = (payment) => {
+                console.log('Pago incompleto encontrado durante autenticación:', payment);
+                this.handleIncompletePayment(payment);
+            };
+            
+            // Realizar autenticación con Pi SDK
+            const auth = await Pi.authenticate(scopes, handleIncompletePayment);
+            
+            if (auth && auth.accessToken) {
+                // Guardar token de acceso
+                currentAccessToken = auth.accessToken;
+                
+                // Guardar datos de usuario en localStorage
+                const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                userData.accessToken = auth.accessToken;
+                
+                if (auth.user && auth.user.username) {
+                    userData.username = auth.user.username;
+                    // Actualizar UI si existe el elemento
+                    if (window.usernameDisplay) {
+                        window.usernameDisplay.textContent = auth.user.username;
+                    }
                 }
-            });
-            
-            // Actualizar token de acceso
-            currentAccessToken = auth.accessToken;
-            
-            // Si no se detectó ningún pago pendiente automáticamente, verificar manualmente
-            if (!pendingPaymentFound) {
-                console.log('Verificando manualmente pagos pendientes...');
-                this.checkPendingPayments();
+                
+                localStorage.setItem('piUserData', JSON.stringify(userData));
+                console.log('Autenticación exitosa');
+                return auth;
+            } else {
+                console.error('Autenticación fallida: No se recibió token de acceso');
+                return null;
             }
-            
-            return auth;
         } catch (error) {
-            console.error('Error en autenticación:', error);
-            throw error;
-        }
-    },
-    
-    // Verificar manualmente si hay pagos pendientes
-    checkPendingPayments: async function() {
-        if (typeof Pi === 'undefined') {
-            console.error('Pi SDK no está disponible');
-            return;
-        }
-        
-        try {
-            // Esta es una solución alternativa usando el API del backend
-            fetch('/payment/check-pending', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    accessToken: currentAccessToken
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.pendingPayments && data.pendingPayments.length > 0) {
-                    console.log('Pagos pendientes encontrados manualmente:', data.pendingPayments);
-                    // Manejar el primer pago pendiente encontrado
-                    this.handleIncompletePayment(data.pendingPayments[0]);
-                } else {
-                    console.log('No se encontraron pagos pendientes manualmente');
-                }
-            })
-            .catch(error => {
-                console.error('Error al verificar pagos pendientes manualmente:', error);
-            });
-        } catch (error) {
-            console.error('Error al verificar pagos pendientes:', error);
+            console.error('Error durante la autenticación:', error);
+            return null;
         }
     },
     
@@ -673,12 +666,16 @@ const PaymentSystem = {
             });
             
             if (!walletResponse.ok) {
+                const errorData = await walletResponse.json();
+                console.error('Error al obtener información de la wallet:', errorData);
                 return { balance: '0' }; // Valor predeterminado
             }
             
-            return await walletResponse.json();
+            const walletData = await walletResponse.json();
+            console.log('Información de wallet recibida:', walletData);
+            return walletData;
         } catch (error) {
-            console.warn('No se pudo obtener información de la wallet:', error);
+            console.error('Error en la solicitud de wallet:', error);
             return { balance: '0' }; // Valor predeterminado
         }
     },
