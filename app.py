@@ -3,6 +3,7 @@ from flask_bootstrap import Bootstrap
 from flask_cors import CORS
 import requests
 import os
+import time
 from dotenv import load_dotenv
 import simplejson as json
 import logging
@@ -373,6 +374,154 @@ def save_score():
     except Exception as e:
         logger.error(f'Error saving score: {str(e)}')
         return jsonify({'error': f'Error saving score: {str(e)}'}), 500
+
+@app.route('/api/transactions', methods=['POST'])
+def get_user_transactions():
+    try:
+        # Obtener el token de acceso
+        access_token = request.json.get('accessToken')
+        filter_type = request.json.get('filterType', None)
+        
+        if not access_token:
+            logger.error('No access token provided')
+            return jsonify({'error': 'No access token provided'}), 400
+        
+        # Configurar headers para la petición al usuario
+        user_header = {
+            'Authorization': f'Bearer {access_token}'
+        }
+        
+        # En un entorno sandbox, simulamos las transacciones almacenadas en localStorage
+        # Para producción, se usaría la API real de Pi Network
+        try:
+            # Intentar consultar transacciones a la API de Pi Network
+            # Esta URL puede variar según la documentación actual de Pi
+            tx_url = "https://api.minepi.com/v2/transactions"
+            response = requests.get(tx_url, headers=user_header)
+            
+            if response.status_code == 200:
+                transactions = response.json()
+                logger.info(f'Successfully retrieved {len(transactions)} transactions')
+            else:
+                # Si la API no está disponible o devuelve error, usamos simulación
+                logger.warning(f'Could not get transactions from API: {response.text}')
+                # Simulamos transacciones para desarrollo/testing
+                transactions = []
+        except Exception as api_error:
+            logger.error(f'Error getting transactions from API: {str(api_error)}')
+            # Simulamos transacciones para desarrollo/testing
+            transactions = []
+        
+        # Filtrar transacciones por tipo si se especifica
+        if filter_type and transactions:
+            filtered_transactions = []
+            for tx in transactions:
+                if 'metadata' in tx and 'type' in tx['metadata'] and tx['metadata']['type'] == filter_type:
+                    filtered_transactions.append(tx)
+            transactions = filtered_transactions
+        
+        return jsonify(transactions)
+    
+    except Exception as e:
+        logger.error(f'Error getting transactions: {str(e)}')
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+@app.route('/api/scores/record', methods=['POST'])
+def record_score():
+    try:
+        # Obtener datos del score y usuario
+        username = request.json.get('username')
+        score = request.json.get('score')
+        level = request.json.get('level')
+        payment_id = request.json.get('paymentId')
+        
+        if not username or score is None or level is None:
+            logger.error('Missing required score data')
+            return jsonify({'error': 'Missing required score data'}), 400
+        
+        logger.info(f'Recording score for {username}: {score} at level {level}')
+        
+        # Abrir o crear un archivo JSON para almacenar puntuaciones
+        scores_file = os.path.join(app.root_path, 'data', 'scores.json')
+        
+        # Crear directorio si no existe
+        os.makedirs(os.path.dirname(scores_file), exist_ok=True)
+        
+        # Leer puntuaciones existentes si el archivo existe
+        if os.path.exists(scores_file):
+            with open(scores_file, 'r') as f:
+                try:
+                    scores = json.load(f)
+                except json.JSONDecodeError:
+                    # Si el archivo está corrupto, crear lista vacía
+                    scores = []
+        else:
+            # No hay archivo de puntuaciones, inicializar con lista vacía
+            scores = []
+        
+        # Crear objeto de puntuación
+        score_obj = {
+            'username': username,
+            'score': score,
+            'level': level,
+            'timestamp': int(time.time() * 1000),
+            'paymentId': payment_id,
+            'blockchain': request.json.get('blockchain', False)
+        }
+        
+        # Añadir a la lista de puntuaciones
+        scores.append(score_obj)
+        
+        # Guardar puntuaciones actualizadas
+        with open(scores_file, 'w') as f:
+            json.dump(scores, f)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Score recorded successfully',
+            'data': score_obj
+        })
+    
+    except Exception as e:
+        logger.error(f'Error recording score: {str(e)}')
+        return jsonify({'error': f'Error recording score: {str(e)}'}), 500
+
+@app.route('/api/scores', methods=['GET'])
+def get_scores():
+    try:
+        # Obtener el nombre de usuario desde el query parameter (opcional)
+        username_filter = request.args.get('username', None)
+        
+        # Abrir o crear un archivo JSON para almacenar puntuaciones
+        scores_file = os.path.join(app.root_path, 'data', 'scores.json')
+        
+        # Crear directorio si no existe
+        os.makedirs(os.path.dirname(scores_file), exist_ok=True)
+        
+        # Leer puntuaciones del archivo JSON si existe
+        if os.path.exists(scores_file):
+            with open(scores_file, 'r') as f:
+                try:
+                    scores = json.load(f)
+                except json.JSONDecodeError:
+                    # Si el archivo está corrupto, crear lista vacía
+                    scores = []
+        else:
+            # No hay archivo de puntuaciones, inicializar con lista vacía
+            scores = []
+        
+        # Filtrar por nombre de usuario si se proporciona
+        if username_filter:
+            scores = [score for score in scores if score.get('username') == username_filter]
+        
+        # Ordenar por puntuación (de mayor a menor)
+        scores.sort(key=lambda x: x.get('score', 0), reverse=True)
+        
+        return jsonify(scores)
+    
+    except Exception as e:
+        logger.error(f'Error getting scores: {str(e)}')
+        return jsonify({'error': f'Error getting scores: {str(e)}'}), 500
 
 if __name__ == '__main__':
     logger.info('Starting Pi Network Basic App')

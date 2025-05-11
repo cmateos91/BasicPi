@@ -167,8 +167,20 @@ const PaymentSystem = {
             
             // Añadir puntos bonus por donación completada
             if (scoreDisplay) {
-                score += 100;
+                const bonusPoints = 100 + (level > 0 ? level * 5 : 0);
+                score += bonusPoints;
                 scoreDisplay.textContent = score.toString();
+                
+                // Registrar puntuación en blockchain si está disponible el sistema
+                if (window.ScoreSystem) {
+                    window.ScoreSystem.recordScoreOnBlockchain(score, level)
+                        .then(() => {
+                            console.log('Puntuación por donación registrada en blockchain');
+                        })
+                        .catch(err => {
+                            console.error('Error al registrar puntuación por donación:', err);
+                        });
+                }
             }
             
             // Efectos de celebración si están disponibles las funciones
@@ -299,6 +311,17 @@ const PaymentSystem = {
                             const bonusPoints = 100 + (level > 0 ? level * 5 : 0);
                             score += bonusPoints;
                             scoreDisplay.textContent = score.toString();
+                            
+                            // Registrar puntuación en blockchain si está disponible el sistema
+                            if (window.ScoreSystem) {
+                                window.ScoreSystem.recordScoreOnBlockchain(score, level)
+                                    .then(() => {
+                                        console.log('Puntuación por donación registrada en blockchain');
+                                    })
+                                    .catch(err => {
+                                        console.error('Error al registrar puntuación por donación:', err);
+                                    });
+                            }
                         }
                         
                         // Efectos de celebración

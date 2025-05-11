@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Elemento balance-display encontrado:', balanceDisplay);
     }
     
+    // Variable para contener función de actualización de puntuaciones blockchain
+    let recordScoreOnBlockchain = null;
+    
     // Exportar elementos importantes para acceso global
     window.usernameDisplay = usernameDisplay;
     window.balanceDisplay = balanceDisplay;
@@ -195,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
         showSequence();
     }
     
-    // Función para verificar respuesta del usuario
+    // Verificar respuesta del usuario
     function checkAnswer(currentLevel) {
         // Coordenadas para partículas en el centro del tablero
         const rect = simonBoard.getBoundingClientRect();
@@ -225,6 +228,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Actualizar score en sistema de pagos
                 PaymentSystem.setScore(score);
+                PaymentSystem.setLevel(level);
+                
+                // Actualizar sistema de puntuaciones
+                if (window.ScoreSystem) {
+                    // Registrar puntuación actual para actualizaciones en tiempo real
+                    window.ScoreSystem.updateGameProgress(score, level);
+                }
                 
                 setTimeout(() => {
                     nextSequence();
@@ -259,6 +269,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             message += `\nLlegaste al nivel ${level}, superando ${score} rondas.\n\n¿Quieres jugar de nuevo?`;
+            
+            // Registrar puntuación final en el sistema
+            if (window.ScoreSystem) {
+                window.ScoreSystem.recordScore(score, level)
+                    .then(() => {
+                        console.log('Puntuación registrada con éxito');
+                    })
+                    .catch(err => {
+                        console.error('Error al registrar puntuación:', err);
+                    });
+            }
             
             // Mostrar mensaje de game over con pequeña demora
             setTimeout(() => {
@@ -350,7 +371,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '/';
     });
     
-    // Inicialización del sistema de pagos
+    // Inicializar el sistema de pagos
     PaymentSystem.init({
         accessToken: null, // Se establecerá durante la autenticación
         paymentStatus: paymentStatus,
@@ -361,6 +382,17 @@ document.addEventListener('DOMContentLoaded', function() {
         scoreDisplay: scoreDisplay,
         createParticles: createParticles
     });
+    
+    // Inicializar el sistema de puntuaciones
+    if (window.ScoreSystem) {
+        window.ScoreSystem.init({
+            scoreboardElement: document.getElementById('scoreboard'),
+            userScoreElement: document.getElementById('user-best-score')
+        });
+        
+        // Guardar referencia a la función de registro en blockchain
+        recordScoreOnBlockchain = window.ScoreSystem.recordScoreOnBlockchain.bind(window.ScoreSystem);
+    }
     
     // Verificar autenticación al cargar la página y configurar el sistema de pagos
     async function initGame() {
@@ -548,6 +580,20 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Error al iniciar el juego. Por favor, intenta de nuevo.');
             window.location.href = '/';
         }
+    }
+    
+    // Event listener para botón de reinicio de puntuaciones
+    const resetScoresButton = document.getElementById('reset-scores-button');
+    if (resetScoresButton) {
+        resetScoresButton.addEventListener('click', function() {
+            if (confirm('¿Estás seguro de que quieres reiniciar tus puntuaciones locales? Esta acción no se puede deshacer.')) {
+                // Reiniciar el sistema de puntuaciones
+                if (window.ScoreSystem) {
+                    window.ScoreSystem.reset();
+                    alert('Puntuaciones locales reiniciadas correctamente.');
+                }
+            }
+        });
     }
     
     // Iniciar el juego
