@@ -476,7 +476,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 // Verificar pagos pendientes adicionales
-                PaymentSystem.checkPendingPayments();
+                try {
+                    if (typeof PaymentSystem.checkPendingPayments === 'function') {
+                        PaymentSystem.checkPendingPayments();
+                    } else {
+                        console.log('La función checkPendingPayments no está disponible, omitiendo verificación de pagos pendientes');
+                    }
+                } catch (paymentError) {
+                    console.warn('Error al verificar pagos pendientes:', paymentError);
+                }
             } catch (authError) {
                 console.error('Error en autenticación inicial:', authError);
                 
