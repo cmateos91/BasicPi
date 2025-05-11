@@ -32,6 +32,7 @@ const ScoreSystem = {
         
         console.log('Sistema de puntuaciones reiniciado');
     },
+    
     // Inicializar el sistema
     init: function(config = {}) {
         // Obtener referencias de elementos DOM si se proporcionan
@@ -53,6 +54,40 @@ const ScoreSystem = {
         }
         
         return this;
+    },
+    
+    // Limpiar datos de puntuaciones para eliminar duplicados y entradas inválidas
+    // También se asegura de mantener solo la puntuación más alta de cada usuario
+    cleanScoreData: function(scores) {
+        if (!scores || !Array.isArray(scores)) return [];
+        
+        // Mapa para almacenar la puntuación más alta de cada usuario
+        const highestScoreMap = new Map();
+        
+        scores.forEach(score => {
+            // Verificar si es un objeto válido
+            if (!score || typeof score !== 'object') return;
+            
+            // Asegurar que el nombre de usuario no esté vacío
+            const username = score.username || 'Anónimo';
+            
+            // Verificar si ya existe una puntuación para este usuario
+            if (!highestScoreMap.has(username) || score.score > highestScoreMap.get(username).score) {
+                // Solo guarda la puntuación si es la más alta para este usuario
+                highestScoreMap.set(username, {
+                    ...score,
+                    username: username
+                });
+            }
+        });
+        
+        // Convertir el mapa a un array
+        const cleanedScores = Array.from(highestScoreMap.values());
+        
+        // Ordenar por puntuación (de mayor a menor)
+        cleanedScores.sort((a, b) => b.score - a.score);
+        
+        return cleanedScores;
     },
     
     // Cargar usuario actual desde localStorage
@@ -459,9 +494,12 @@ const ScoreSystem = {
             return;
         }
         
+        // Eliminar duplicados y filas con nombres vacíos
+        const cleanedScores = this.cleanScoreData(currentScores);
+        
         // Crear tabla
         const table = document.createElement('table');
-        table.className = 'table table-sm table-striped';
+        table.className = 'table table-sm';
         
         // Crear encabezado de tabla
         const thead = document.createElement('thead');
@@ -470,7 +508,6 @@ const ScoreSystem = {
                 <th>#</th>
                 <th>Usuario</th>
                 <th>Puntos</th>
-                <th>Nivel</th>
                 <th>Fecha</th>
             </tr>
         `;
@@ -480,8 +517,8 @@ const ScoreSystem = {
         const tbody = document.createElement('tbody');
         
         // Mostrar primero las puntuaciones del usuario actual
-        const userScores = currentScores.filter(score => score.username === currentUsername);
-        const otherScores = currentScores.filter(score => score.username !== currentUsername);
+        const userScores = cleanedScores.filter(score => score.username === currentUsername);
+        const otherScores = cleanedScores.filter(score => score.username !== currentUsername);
         
         // Ordenar por puntuación (de mayor a menor)
         userScores.sort((a, b) => b.score - a.score);
@@ -499,20 +536,27 @@ const ScoreSystem = {
                 row.className = 'current-user-score';
             }
             
+            // Añadir clase para filas alternadas
+            if (index % 2 === 1) {
+                row.classList.add('alt-row');
+            }
+            
             // Resaltar puntuaciones grabadas en blockchain
             if (score.blockchain) {
-                row.className += ' blockchain-score';
+                row.classList.add('blockchain-score');
             }
             
             // Formatear fecha
             const date = new Date(score.timestamp);
             const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
             
+            // Asegurar que el nombre de usuario no esté vacío
+            const displayName = score.username ? score.username : 'Anónimo';
+            
             row.innerHTML = `
                 <td>${index + 1}</td>
-                <td>${score.username}${score.username === currentUsername ? ' (Tú)' : ''}</td>
-                <td>${score.score}</td>
-                <td>${score.level}</td>
+                <td class="username-cell">${displayName}${score.username === currentUsername ? ' <span class="current-user-tag">(Tú)</span>' : ''}</td>
+                <td class="score-cell">${score.score}</td>
                 <td>${formattedDate}</td>
             `;
             
@@ -549,7 +593,7 @@ const ScoreSystem = {
         
         this.userScoreElement.innerHTML = `
             <div class="user-best-score">
-                <i class="fas fa-medal"></i> Tu mejor: <span>${maxScore}</span> puntos (Nivel ${maxLevel})
+                <i class="fas fa-medal"></i> Tu mejor puntuación: <span>${maxScore}</span> puntos
             </div>
         `;
     },

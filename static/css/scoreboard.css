@@ -1,12 +1,14 @@
 /* Estilos para el sistema de puntuaciones de Pi Network */
 
 .scoreboard {
-    background-color: rgba(10, 10, 40, 0.7);
-    border-radius: 10px;
+    background-color: rgba(10, 10, 40, 0.9);
+    border-radius: 12px;
     padding: 15px;
     margin-top: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(80, 80, 200, 0.3);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(90, 90, 220, 0.4);
+    max-width: 100%;
+    overflow-x: auto; /* Permite scrollear en móviles */
 }
 
 .scoreboard-header {
@@ -32,44 +34,86 @@
     color: #f8f9fa;
     border-collapse: separate;
     border-spacing: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    border-radius: 8px;
+    overflow: hidden; /* Asegura que los bordes redondeados se muestren */
 }
 
 .scoreboard table th {
-    background-color: rgba(50, 50, 100, 0.7);
+    background-color: rgba(60, 60, 120, 0.85);
     color: #fff;
-    font-size: 0.85rem;
-    padding: 8px;
+    font-size: 0.9rem;
+    padding: 10px 8px;
     text-align: center;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid rgba(90, 90, 220, 0.4);
 }
 
 .scoreboard table td {
-    font-size: 0.85rem;
-    padding: 8px;
+    font-size: 0.9rem;
+    padding: 10px 8px;
     text-align: center;
-    background-color: rgba(30, 30, 70, 0.5);
+    background-color: rgba(30, 30, 70, 0.7);
+    border-bottom: 1px solid rgba(60, 60, 140, 0.2);
+}
+
+.scoreboard table tr:last-child td {
+    border-bottom: none;
 }
 
 .scoreboard table tr:nth-child(even) td {
-    background-color: rgba(40, 40, 80, 0.5);
+    background-color: rgba(40, 40, 90, 0.7);
 }
 
-.scoreboard table tr:hover td {
-    background-color: rgba(60, 60, 120, 0.6);
+.scoreboard .username-cell {
+    font-weight: 500;
+    text-align: left;
+    padding-left: 12px;
+    max-width: 130px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.scoreboard .score-cell {
+    font-weight: 700;
+    color: #ffdd57;
+}
+
+.scoreboard .current-user-tag {
+    color: #8df;
+    font-size: 0.8em;
+    margin-left: 4px;
+    font-style: italic;
 }
 
 /* Estilo para resaltar la puntuación del usuario actual */
 .current-user-score td {
-    background-color: rgba(60, 90, 140, 0.7) !important;
-    font-weight: bold;
+    background-color: rgba(60, 90, 160, 0.85) !important;
+    font-weight: 600;
+    position: relative;
 }
 
 .current-user-score:hover td {
-    background-color: rgba(70, 100, 150, 0.8) !important;
+    background-color: rgba(70, 105, 180, 0.9) !important;
 }
 
 /* Estilo para puntuaciones en blockchain */
-.blockchain-score td {
-    border-left: 3px solid #8A2BE2;
+.blockchain-score td:first-child {
+    position: relative;
+}
+
+.blockchain-score td:first-child:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(to bottom, #9b59b6, #8e44ad);
+    border-radius: 2px;
 }
 
 .empty-scores {
@@ -81,41 +125,49 @@
 .blockchain-note {
     text-align: center;
     color: #aab;
-    font-size: 0.8rem;
-    margin-top: 10px;
+    font-size: 0.85rem;
+    margin-top: 15px;
+    padding: 5px;
+    background-color: rgba(50, 30, 90, 0.3);
+    border-radius: 6px;
 }
 
 .blockchain-note i {
-    color: #8A2BE2;
-    margin-right: 3px;
+    color: #9b59b6;
+    margin-right: 5px;
 }
 
 /* Estilo para el mejor puntaje del usuario */
 .user-best-score {
     display: inline-block;
-    background-color: rgba(50, 50, 100, 0.7);
-    border-radius: 5px;
-    padding: 5px 10px;
+    background: linear-gradient(to right, rgba(50, 50, 120, 0.8), rgba(70, 40, 120, 0.8));
+    border-radius: 8px;
+    padding: 8px 15px;
     margin: 10px 0;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     color: #f8f9fa;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(100, 100, 200, 0.2);
 }
 
 .user-best-score i {
-    color: gold;
-    margin-right: 3px;
+    color: #ffd700;
+    margin-right: 6px;
+    text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
 }
 
 .user-best-score span {
     font-weight: bold;
     color: #fff;
+    font-size: 1.1em;
+    margin: 0 3px;
 }
 
 /* Animación para nuevos récords */
 @keyframes scoreFlash {
-    0% { background-color: rgba(138, 43, 226, 0.1); }
-    50% { background-color: rgba(138, 43, 226, 0.4); }
-    100% { background-color: rgba(138, 43, 226, 0.1); }
+    0% { box-shadow: 0 0 5px 2px rgba(155, 89, 182, 0.2); }
+    50% { box-shadow: 0 0 15px 5px rgba(155, 89, 182, 0.5); }
+    100% { box-shadow: 0 0 5px 2px rgba(155, 89, 182, 0.2); }
 }
 
 .new-record {
@@ -125,16 +177,35 @@
 /* Diseño responsive */
 @media (max-width: 576px) {
     .scoreboard {
-        padding: 10px;
+        padding: 10px 5px;
+        border-radius: 8px;
     }
     
     .scoreboard table th,
     .scoreboard table td {
-        padding: 6px 4px;
-        font-size: 0.75rem;
+        padding: 8px 4px;
+        font-size: 0.8rem;
+    }
+    
+    .scoreboard table th:nth-child(4),
+    .scoreboard table td:nth-child(4) {
+        display: none; /* Ocultar columna de fecha en móviles */
     }
     
     .blockchain-note {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
+        margin-top: 10px;
+        padding: 4px;
+    }
+    
+    .scoreboard .username-cell {
+        max-width: 80px;
+    }
+    
+    .user-best-score {
+        width: 100%;
+        text-align: center;
+        font-size: 0.85rem;
+        padding: 6px 10px;
     }
 }

@@ -71,49 +71,46 @@ document.addEventListener('DOMContentLoaded', function() {
     let isGameOver = false;
     let maxLevel = 0; // Nivel máximo alcanzado
     
-    // Cargar sonidos
-    const sounds = {
-        green: new Audio('/static/sounds/green.mp3'),
-        red: new Audio('/static/sounds/red.mp3'),
-        yellow: new Audio('/static/sounds/yellow.mp3'),
-        blue: new Audio('/static/sounds/blue.mp3'),
-        wrong: new Audio('/static/sounds/wrong.mp3'),
-        success: new Audio('/static/sounds/success.mp3') // Sonido para secuencia correcta
-    };
+    // Cargar sonidos (usando SoundManager)
+    // Ahora todos los sonidos se generan desde green.wav con diferentes tonos
 
-    // Función para emitir sonido
+    // Función para emitir sonido usando SoundManager
     function playSound(color) {
-        try {
-            sounds[color].currentTime = 0;
-            sounds[color].play();
-        } catch (error) {
-            console.error('Error al reproducir sonido:', error);
-            // Si no se carga el sonido, generamos uno con la API Web Audio
-            const context = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = context.createOscillator();
-            const gainNode = context.createGain();
-            
-            // Configurar frecuencia según el color
-            if (color === 'green') oscillator.frequency.value = 261.63; // Do (C4)
-            if (color === 'red') oscillator.frequency.value = 329.63; // Mi (E4)
-            if (color === 'yellow') oscillator.frequency.value = 392.00; // Sol (G4)
-            if (color === 'blue') oscillator.frequency.value = 523.25; // Do (C5)
-            if (color === 'wrong') oscillator.frequency.value = 110.00; // La (A2)
-            if (color === 'success') {
-                // Secuencia de notas para éxito
-                const notes = [261.63, 329.63, 392.00, 523.25];
-                oscillator.frequency.value = notes[Math.floor(Math.random() * notes.length)];
+        // Use the global SoundManager if available, otherwise fallback to default
+        if (window.SoundManager) {
+            window.SoundManager.playSound(color);
+        } else {
+            // Fallback to simple audio playback if SoundManager isn't loaded
+            console.warn('SoundManager not found, using fallback sound');
+            try {
+                // Create a simple oscillator-based sound
+                const context = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = context.createOscillator();
+                const gainNode = context.createGain();
+                
+                // Configurar frecuencia según el color
+                if (color === 'green') oscillator.frequency.value = 261.63; // Do (C4)
+                if (color === 'red') oscillator.frequency.value = 329.63; // Mi (E4)
+                if (color === 'yellow') oscillator.frequency.value = 392.00; // Sol (G4)
+                if (color === 'blue') oscillator.frequency.value = 523.25; // Do (C5)
+                if (color === 'wrong') oscillator.frequency.value = 110.00; // La (A2)
+                if (color === 'success') {
+                    // Simple success tone
+                    oscillator.frequency.value = 349.23; // F4
+                }
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(context.destination);
+                
+                // Reproducir sonido brevemente
+                gainNode.gain.value = 0.5;
+                oscillator.start();
+                setTimeout(() => {
+                    oscillator.stop();
+                }, 300);
+            } catch (error) {
+                console.error('Error al reproducir sonido fallback:', error);
             }
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(context.destination);
-            
-            // Reproducir sonido brevemente
-            gainNode.gain.value = 0.5;
-            oscillator.start();
-            setTimeout(() => {
-                oscillator.stop();
-            }, 300);
         }
     }
     
@@ -223,10 +220,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     simonBoard.classList.remove('celebrate');
                 }, 500);
                 
-                // Reproducir sonido de éxito
-                try {
-                    sounds.success.play();
-                } catch (e) {
+                // Reproducir sonido de éxito - secuencia especial
+                if (window.SoundManager) {
+                    window.SoundManager.playSuccessSequence();
+                } else {
                     playSound('success');
                 }
                 
@@ -249,8 +246,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 1000);
             }
         } else {
-            // Respuesta incorrecta
-            playSound('wrong');
+            // Respuesta incorrecta - secuencia especial para game over
+            if (window.SoundManager) {
+                window.SoundManager.playGameOverSequence();
+            } else {
+                playSound('wrong');
+            }
             isGameOver = true;
             
             // Efecto visual de game over
@@ -613,8 +614,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 userData.records = 0;
                 localStorage.setItem('piUserData', JSON.stringify(userData));
                 // Actualizar la interfaz
-                updateScoreboard();
-                updateBestScore();
+                if (window.ScoreSystem) {
+                    window.ScoreSystem.renderScoreboard(); // Actualizar tabla de puntuaciones
+                    window.ScoreSystem.updateUserScoreDisplay(); // Actualizar puntuación máxima
+                }
                 updateUserInterface(); // Actualizar el contador de registros
                 // Mostrar mensaje de éxito
                 alert('Puntuaciones locales y contador de registros reiniciados exitosamente');
