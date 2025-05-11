@@ -7,6 +7,8 @@ import time
 from dotenv import load_dotenv
 import simplejson as json
 import logging
+# Importar el módulo de contador de pagos
+from payment_counter import add_to_counter, get_counter_summary
 
 # Configurar logging
 logging.basicConfig(level=logging.DEBUG)
@@ -200,6 +202,19 @@ def complete_payment():
             'Authorization': f'Key {api_key}'
         }
         
+        # Obtener detalles completos del pago desde la API de Pi
+        payment_url = f"https://api.minepi.com/v2/payments/{payment_id}"
+        payment_response = requests.get(payment_url, headers=headers)
+        
+        if payment_response.status_code != 200:
+            logger.error(f'Failed to get payment details: {payment_response.text}')
+            return jsonify({'error': f'Failed to get payment details: {payment_response.text}'}), 400
+        
+        payment_details = payment_response.json()
+        payment_amount = float(payment_details.get('amount', 0.0))
+        user_id = payment_details.get('user_uid', '')
+        username = payment_details.get('user_uid', '') # Usamos user_uid como nombre también, podríamos obtener el nombre real con otra llamada API
+        
         # Completar el pago en la API de Pi Network
         complete_url = f"https://api.minepi.com/v2/payments/{payment_id}/complete"
         complete_data = {
@@ -215,7 +230,28 @@ def complete_payment():
         completion_result = response.json()
         logger.info(f'Payment completed: {completion_result}')
         
-        return jsonify(completion_result)
+        # Añadir el 50% del pago al contador (la otra mitad va a la wallet principal)
+        amount_to_add = payment_amount / 2  # Dividimos el pago en dos partes iguales
+        counter_result = add_to_counter(
+            amount=amount_to_add,
+            payment_id=payment_id,
+            user_id=user_id,
+            username=username
+        )
+        
+        logger.info(f'Added {amount_to_add} Pi to counter. Total accumulated: {counter_result["accumulated_amount"]} Pi')
+        
+        # Devolver el resultado con la información del contador
+        return jsonify({
+            'status': 'success',
+            'message': 'Payment completed and counter updated',
+            'payment_result': completion_result,
+            'counter': {
+                'amount_added': amount_to_add,
+                'total_accumulated': counter_result['accumulated_amount'],
+                'payments_count': counter_result['payments_count']
+            }
+        })
     
     except Exception as e:
         logger.error(f'Error completing payment: {str(e)}')
@@ -352,6 +388,29 @@ def cancel_all_pending_payments():
     except Exception as e:
         logger.error(f'Error in cancel all pending payments: {str(e)}')
         return jsonify({'error': f'Error cancelling payments: {str(e)}'}), 500
+
+# Rutas para el sistema de contador de pagos
+@app.route('/api/payment-counter', methods=['GET'])
+def get_payment_counter():
+    """Obtener el estado actual del contador de pagos"""
+    try:
+        counter_data = get_counter_summary()
+        
+        if not counter_data:
+            return jsonify({
+                'error': 'No se pudo obtener el contador de pagos'
+            }), 500
+        
+        return jsonify({
+            'status': 'success',
+            'counter': counter_data
+        })
+    
+    except Exception as e:
+        logger.error(f'Error al obtener el contador de pagos: {str(e)}')
+        return jsonify({
+            'error': f'Error al obtener el contador de pagos: {str(e)}'
+        }), 500
 
 # Rutas para el juego Simon Dice
 @app.route('/api/scores', methods=['POST'])

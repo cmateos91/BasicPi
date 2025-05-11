@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 message += '¡WOW! Eres un maestro del Simon Dice.';
             }
             
-            message += `\nLlegaste al nivel ${level}, superando ${score} rondas.\n\n¿Quieres jugar de nuevo?`;
+            message += `\nLlegaste al nivel ${level}, superando ${score} rondas.\n\nPara jugar de nuevo, haz clic en el botón "Jugar (0.20 Pi)".`;
             
             // Registrar puntuación final en el sistema
             if (window.ScoreSystem) {
@@ -299,18 +299,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Mostrar mensaje de game over con pequeña demora
             setTimeout(() => {
-                if (confirm(message)) {
-                    resetGame();
-                    // Reiniciar juego después de una breve pausa
-                    setTimeout(() => {
-                        isPlaying = true;
-                        startBtn.style.display = 'none';
-                        document.querySelector('.controls-title').style.display = 'none';
-                        nextSequence();
-                    }, 500);
-                } else {
-                    resetGame();
-                }
+                alert(message);
+                resetGame();
             }, 500);
         }
     }
@@ -368,6 +358,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isGameOver) {
             resetGame();
             isGameOver = false;
+        }
+        
+        // Verificar si el usuario ha realizado un pago
+        const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+        const hasActivePurchase = userData.hasActivePurchase || false;
+        
+        if (!hasActivePurchase) {
+            // Si no ha pagado, mostrar mensaje y sugerir hacer un pago
+            alert('Necesitas realizar un pago de 0.20 Pi para jugar. Haz clic en el botón "Jugar (0.20 Pi)" para comenzar.');
+            return;
         }
         
         if (!isPlaying) {

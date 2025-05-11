@@ -63,18 +63,8 @@ const PaymentSystem = {
         if (gameData && gameData.level !== undefined) {
             level = gameData.level;
         }
-        if (gameData && gameData.records !== undefined) {
-            // Actualizar localStorage con el nuevo contador de registros
-            const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
-            userData.records = gameData.records;
-            localStorage.setItem('piUserData', JSON.stringify(userData));
-            // Actualizar la interfaz
-            if (recordsDisplay) {
-                recordsDisplay.textContent = gameData.records;
-            }
-        }
         if (gameData && gameData.lost !== undefined && gameData.lost) {
-            this.decreaseRegistrationCounter();
+            this.resetPurchase(); // Llamar a la nueva función cuando el usuario pierde
         }
     },
     
@@ -312,16 +302,12 @@ const PaymentSystem = {
     },
     
     // Completar un pago
-    // Disminuir el contador de registros cuando el usuario pierde
-    decreaseRegistrationCounter: function() {
+    // Resetear el permiso para jugar cuando el juego termina
+    resetPurchase: function() {
         const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
-        if (userData.records && userData.records > 0) {
-            userData.records--;
-            localStorage.setItem('piUserData', JSON.stringify(userData));
-            if (recordsDisplay) {
-                recordsDisplay.textContent = userData.records;
-            }
-        }
+        userData.hasActivePurchase = false;
+        localStorage.setItem('piUserData', JSON.stringify(userData));
+        console.log('Permiso para jugar desactivado, es necesario realizar un nuevo pago para continuar.');
     },
 
     completePayment: function(paymentId, txid) {
@@ -363,13 +349,11 @@ const PaymentSystem = {
                 if (paymentStatus) paymentStatus.textContent = 'Error al completar el pago';
             } else {
                 if (paymentStatus) paymentStatus.textContent = 'Pago completado';
-                // Actualizar contador de registros
+                // Activar la bandera que permite jugar
                 const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
-                userData.records = (userData.records || 0) + 5;
+                userData.hasActivePurchase = true;
                 localStorage.setItem('piUserData', JSON.stringify(userData));
-                if (recordsDisplay) {
-                    recordsDisplay.textContent = userData.records;
-                }
+                
                 // Mostrar efectos visuales
                 if (simonBoard && createParticles) {
                     const rect = simonBoard.getBoundingClientRect();
@@ -377,6 +361,9 @@ const PaymentSystem = {
                     const centerY = rect.top + rect.height / 2;
                     createParticles(centerX, centerY, '#8c52ff', 30, 150);
                 }
+                
+                // Mostrar mensaje para indicar que ya puede jugar
+                alert('¡Pago completado! Ahora puedes jugar. Presiona el botón "INICIO" para comenzar.');
                 
                 // Añadir puntos bonus por donación completada
                 if (scoreDisplay) {
@@ -400,7 +387,7 @@ const PaymentSystem = {
             // Restaurar botón
             if (donationButton) {
                 donationButton.disabled = false;
-                donationButton.innerHTML = '<i class="fas fa-save"></i> Guardar 5 registros';
+                donationButton.innerHTML = '<i class="fas fa-gamepad"></i> Jugar (0.20 Pi)';
             }
         })
         .catch(error => {
@@ -414,7 +401,7 @@ const PaymentSystem = {
             // Restaurar botón
             if (donationButton) {
                 donationButton.disabled = false;
-                donationButton.innerHTML = '<i class="fas fa-save"></i> Guardar 5 registros';
+                donationButton.innerHTML = '<i class="fas fa-gamepad"></i> Jugar (0.20 Pi)';
             }
         });
     },
@@ -445,9 +432,9 @@ const PaymentSystem = {
             // Crear pago con los callbacks requeridos
             const payment = await Pi.createPayment(
                 {
-                    amount: 1,
+                    amount: 0.20,
                     currency: 'PI',
-                    memo: "Guardar 5 registros",
+                    memo: "Partida de Simon Dice",
                     metadata: {
                         score: score,
                         level: level,
@@ -473,7 +460,7 @@ const PaymentSystem = {
                         // Restaurar botón
                         if (donationButton) {
                             donationButton.disabled = false;
-                            donationButton.innerHTML = '<i class="fas fa-save"></i> Guardar 5 registros';
+                            donationButton.innerHTML = '<i class="fas fa-gamepad"></i> Jugar (0.20 Pi)';
                         }
                     },
                     // Callback cuando ocurre un error
@@ -482,7 +469,7 @@ const PaymentSystem = {
                         // Restaurar botón
                         if (donationButton) {
                             donationButton.disabled = false;
-                            donationButton.innerHTML = '<i class="fas fa-save"></i> Guardar 5 registros';
+                            donationButton.innerHTML = '<i class="fas fa-gamepad"></i> Jugar (0.20 Pi)';
                         }
                     }
                 }
@@ -495,7 +482,7 @@ const PaymentSystem = {
             // Restaurar botón
             if (donationButton) {
                 donationButton.disabled = false;
-                donationButton.innerHTML = '<i class="fas fa-save"></i> Guardar 5 registros';
+                donationButton.innerHTML = '<i class="fas fa-gamepad"></i> Jugar (0.20 Pi)';
             }
         }
     },
