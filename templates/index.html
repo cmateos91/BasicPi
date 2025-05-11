@@ -46,6 +46,10 @@
 
     <!-- SDK de Pi Network -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    
+    <!-- Fondo animado con partículas -->
+    <script src="/static/js/particle-background.js"></script>
+    
     <script>
         // Variables globales
         let currentAccessToken = null;
@@ -69,65 +73,7 @@
                 // Verificar validez del token (simplemente redirigir al juego)
                 window.location.href = '/simon';
             }
-            
-            // Crear partículas de fondo
-            createParticles();
-            createPiLogos();
         });
-
-        // Crear partículas de fondo
-        function createParticles() {
-            const container = document.getElementById('particles');
-            const particleCount = 15;
-            
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                
-                // Tamaño aleatorio
-                const size = Math.random() * 10 + 5;
-                particle.style.width = size + 'px';
-                particle.style.height = size + 'px';
-                
-                // Posición aleatoria
-                particle.style.left = Math.random() * 100 + 'vw';
-                particle.style.top = Math.random() * 100 + 'vh';
-                
-                // Velocidad aleatoria
-                const duration = Math.random() * 15 + 10;
-                particle.style.animationDuration = duration + 's';
-                
-                // Retraso aleatorio
-                particle.style.animationDelay = Math.random() * 5 + 's';
-                
-                container.appendChild(particle);
-            }
-        }
-        
-        // Crear logos flotantes de Pi
-        function createPiLogos() {
-            const container = document.getElementById('particles');
-            const logoCount = 5;
-            
-            for (let i = 0; i < logoCount; i++) {
-                const logo = document.createElement('div');
-                logo.className = 'pi-logo';
-                logo.textContent = 'π';
-                
-                // Posición aleatoria
-                logo.style.left = Math.random() * 100 + 'vw';
-                logo.style.top = Math.random() * 100 + 'vh';
-                
-                // Velocidad aleatoria
-                const duration = Math.random() * 30 + 20;
-                logo.style.animationDuration = duration + 's';
-                
-                // Retraso aleatorio
-                logo.style.animationDelay = Math.random() * 5 + 's';
-                
-                container.appendChild(logo);
-            }
-        }
 
         // Función para autenticar y redirigir al juego
         async function authenticateAndRedirect() {
