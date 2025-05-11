@@ -22,6 +22,14 @@
             </div>
         </div>
 
+        <!-- MEJORA: Botón para solicitar autenticación manualmente si hay algún problema -->
+        <div class="user-auth-helper" style="text-align: center; margin: 10px 0; display: none; background-color: rgba(30, 30, 70, 0.7); border-radius: 10px; padding: 15px;" id="auth-helper">
+            <p style="color: #f8d7da; margin-bottom: 10px;">Si no puedes ver tu nombre de usuario, puedes intentar autenticarte manualmente:</p>
+            <button id="manual-auth-button" class="btn btn-warning btn-sm">
+                <i class="fas fa-user-lock"></i> Iniciar Sesión
+            </button>
+        </div>
+
         <div class="game-container">
             <div class="simon-container">
                 <div class="simon-board" id="simon-board">
@@ -69,22 +77,6 @@
                 <button id="force-cancel-button" class="btn btn-sm btn-outline-danger">
                     <i class="fas fa-exclamation-triangle"></i> ¿Problemas con pagos?
                 </button>
-                <script>
-                    document.getElementById('force-cancel-button').addEventListener('click', function() {
-                        // Primera opción: intentar la función directamente
-                        try {
-                            if (typeof PaymentSystem !== 'undefined' && PaymentSystem.forcePaymentCancellation) {
-                                PaymentSystem.forcePaymentCancellation();
-                            } else {
-                                // Segunda opción: recargar con parámetro especial
-                                window.location.href = window.location.pathname + '?force_cancel=true';
-                            }
-                        } catch (e) {
-                            // Tercera opción si todo falla: recargar con parámetro especial
-                            window.location.href = window.location.pathname + '?force_cancel=true';
-                        }
-                    });
-                </script>
             </div>
             
             <!-- Tabla de puntuaciones -->
@@ -149,6 +141,100 @@
                     }
                 }
             }, 3000); // Verificar después de 3 segundos
+        });
+        
+        // Mostrar botón de ayuda si el usuario es "Pioneer" después de un tiempo
+        setTimeout(function() {
+            var usernameDisplay = document.getElementById('username-display');
+            var authHelper = document.getElementById('auth-helper');
+            if (usernameDisplay && (usernameDisplay.textContent === 'Pioneer' || !usernameDisplay.textContent)) {
+                authHelper.style.display = 'block';
+            }
+        }, 4000);
+        
+        // Al hacer clic en el botón de autenticación manual
+        document.getElementById('manual-auth-button').addEventListener('click', function() {
+            if (typeof Pi !== 'undefined') {
+                Pi.init({ version: "2.0", sandbox: true });
+                Pi.authenticate(['payments', 'username'], {
+                    onIncompletePaymentFound: function(payment) {
+                        console.log('Pago incompleto encontrado:', payment);
+                        if (typeof PaymentSystem !== 'undefined' && PaymentSystem.handleIncompletePayment) {
+                            PaymentSystem.handleIncompletePayment(payment);
+                        }
+                    }
+                }).then(function(auth) {
+                    if (auth && auth.user && auth.user.username) {
+                        var usernameDisplay = document.getElementById('username-display');
+                        if (usernameDisplay) {
+                            usernameDisplay.textContent = auth.user.username;
+                            usernameDisplay.dataset.usernameLocked = 'true';
+                            
+                            // Guardar datos en localStorage
+                            try {
+                                var userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                                userData.username = auth.user.username;
+                                userData.accessToken = auth.accessToken;
+                                localStorage.setItem('piUserData', JSON.stringify(userData));
+                                sessionStorage.setItem('piUserData', JSON.stringify(userData));
+                                
+                                // Actualizar balance si está disponible PaymentSystem
+                                if (typeof PaymentSystem !== 'undefined' && PaymentSystem.setAccessToken) {
+                                    PaymentSystem.setAccessToken(auth.accessToken);
+                                    console.log('Token de acceso actualizado en PaymentSystem');
+                                    
+                                    // Intentar obtener balance
+                                    if (PaymentSystem.getWalletInfo) {
+                                        PaymentSystem.getWalletInfo(auth.accessToken)
+                                            .then(function(walletInfo) {
+                                                var balanceDisplay = document.getElementById('balance-display');
+                                                if (balanceDisplay && walletInfo && walletInfo.balance) {
+                                                    balanceDisplay.textContent = walletInfo.balance;
+                                                    userData.balance = walletInfo.balance;
+                                                    localStorage.setItem('piUserData', JSON.stringify(userData));
+                                                }
+                                            })
+                                            .catch(function(error) {
+                                                console.warn('Error al obtener información de wallet:', error);
+                                            });
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('Error al guardar datos:', e);
+                            }
+                            
+                            // Ocultar ayuda
+                            document.getElementById('auth-helper').style.display = 'none';
+                            
+                            // Mostrar mensaje de éxito
+                            alert('Autenticación exitosa. Bienvenido, ' + auth.user.username + '!');
+                        }
+                    } else {
+                        alert('Error: No se pudieron obtener los datos de usuario.');
+                    }
+                }).catch(function(error) {
+                    console.error('Error en autenticación manual:', error);
+                    alert('Error en la autenticación: ' + (error.message || 'Intenta recargar la página'));
+                });
+            } else {
+                alert('Error: SDK de Pi no disponible. Intenta recargar la página.');
+            }
+        });
+        
+        // Funcionalidad del botón para cancelar pagos
+        document.getElementById('force-cancel-button').addEventListener('click', function() {
+            // Primera opción: intentar la función directamente
+            try {
+                if (typeof PaymentSystem !== 'undefined' && PaymentSystem.forcePaymentCancellation) {
+                    PaymentSystem.forcePaymentCancellation();
+                } else {
+                    // Segunda opción: recargar con parámetro especial
+                    window.location.href = window.location.pathname + '?force_cancel=true';
+                }
+            } catch (e) {
+                // Tercera opción si todo falla: recargar con parámetro especial
+                window.location.href = window.location.pathname + '?force_cancel=true';
+            }
         });
     </script>
 </body>

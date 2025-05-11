@@ -414,11 +414,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Verificar autenticación al cargar la página y configurar el sistema de pagos
     async function initGame() {
         try {
+            console.log('Iniciando proceso de autenticación con Pi Network...');
             // Reiniciar el SDK de Pi para asegurar un estado limpio
             Pi.init({ version: "2.0", sandbox: true });
             
             // Configurar los permisos que necesitamos
-            const scopes = ['payments'];
+            const scopes = ['payments', 'username']; // Añadimos 'username' explícitamente
             
             // Función para manejar pagos incompletos (pasada directamente, no como método de objeto)
             function handleIncompletePayment(payment) {
@@ -426,14 +427,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 PaymentSystem.handleIncompletePayment(payment);
             }
             
-            // Autenticar manualmente
+            // Autenticar manualmente con Pi Network
             try {
+                console.log('Solicitando autenticación al usuario...');
                 const auth = await Pi.authenticate(scopes, handleIncompletePayment);
                 
                 // Verificar si auth y auth.user están definidos
                 if (!auth || !auth.user) {
                     throw new Error('Autenticación incompleta - datos de usuario no disponibles');
                 }
+                
+                console.log('Autenticación exitosa:', auth.user.username);
                 
                 // Marcar la autenticación primaria como completada
                 authPrimaryComplete = true;
@@ -450,20 +454,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Mostrar datos del usuario en la interfaz
                 if (usernameDisplay && auth.user && auth.user.username) {
                     usernameDisplay.textContent = auth.user.username;
+                    // Marcar como bloqueado para evitar sobrescrituras
+                    usernameDisplay.dataset.usernameLocked = 'true';
                 }
                 
                 // Guardar datos del usuario en localStorage para persistencia
                 try {
                     const userData = {
                         username: auth.user.username,
-                        accessToken: auth.accessToken
+                        accessToken: auth.accessToken,
+                        records: 0
                     };
+                    
+                    // Preservar registros si ya existían
+                    const existingData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                    if (existingData && existingData.records) {
+                        userData.records = existingData.records;
+                    }
+                    
                     localStorage.setItem('piUserData', JSON.stringify(userData));
+                    sessionStorage.setItem('piUserData', JSON.stringify(userData));
                 } catch (storageError) {
                     console.warn('No se pudieron guardar datos en localStorage:', storageError);
                 }
-                
-                console.log('Autenticación completada:', auth.user.username);
                 
                 // Obtener información adicional del usuario si es necesario
                 try {
@@ -485,37 +498,105 @@ document.addEventListener('DOMContentLoaded', function() {
                 } catch (paymentError) {
                     console.warn('Error al verificar pagos pendientes:', paymentError);
                 }
+                
+                // Actualizar información del usuario
+                updateUserInterface();
+                return auth; // Retornar la autenticación para uso en otras partes
             } catch (authError) {
                 console.error('Error en autenticación inicial:', authError);
+                console.log('Intentando usar datos de sesión existentes...');
                 
                 // Intentar cargar datos de sesión existentes
                 const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
                 if (userData && userData.accessToken) {
-                    PaymentSystem.setAccessToken(userData.accessToken);
-                    console.log('Usando token de sesión existente');
+                    console.log('Datos de sesión encontrados, reintentando autenticación...');
                     
-                    // Mostrar datos del usuario desde localStorage
-                    if (usernameDisplay && userData.username) {
-                        usernameDisplay.textContent = userData.username;
-                    }
-                    
-                    if (balanceDisplay && userData.balance) {
-                        balanceDisplay.textContent = userData.balance;
-                    } else {
-                        // Intentar obtener balance si no está guardado
-                        try {
-                            const walletInfo = await PaymentSystem.getWalletInfo(userData.accessToken);
-                            if (balanceDisplay && walletInfo && walletInfo.balance) {
-                                balanceDisplay.textContent = walletInfo.balance;
-                                
-                                // Actualizar localStorage con el balance
-                                userData.balance = walletInfo.balance;
-                                localStorage.setItem('piUserData', JSON.stringify(userData));
+                    // Reintento de autenticación silenciosa
+                    try {
+                        // Usar el token existente mientras tanto
+                        PaymentSystem.setAccessToken(userData.accessToken);
+                        console.log('Usando token de sesión existente temporalmente');
+                        
+                        // Mostrar datos del usuario desde localStorage mientras se reintenta
+                        if (usernameDisplay && userData.username) {
+                            usernameDisplay.textContent = userData.username;
+                        }
+                        
+                        if (balanceDisplay && userData.balance) {
+                            balanceDisplay.textContent = userData.balance;
+                        }
+                        
+                        // Reintentar autenticación con Pi (permite forzar el diálogo)
+                        console.log('Reintentando autenticación con Pi...');
+                        const retryAuth = await Pi.authenticate(scopes, handleIncompletePayment);
+                        
+                        if (retryAuth && retryAuth.user && retryAuth.user.username) {
+                            console.log('Reintento de autenticación exitoso:', retryAuth.user.username);
+                            
+                            // Actualizar token y datos de usuario
+                            PaymentSystem.setAccessToken(retryAuth.accessToken);
+                            userData.username = retryAuth.user.username;
+                            userData.accessToken = retryAuth.accessToken;
+                            
+                            // Guardar datos actualizados
+                            localStorage.setItem('piUserData', JSON.stringify(userData));
+                            sessionStorage.setItem('piUserData', JSON.stringify(userData));
+                            
+                            // Actualizar UI
+                            if (usernameDisplay) {
+                                usernameDisplay.textContent = retryAuth.user.username;
+                                usernameDisplay.dataset.usernameLocked = 'true';
                             }
-                        } catch (walletError) {
-                            console.warn('Error al obtener información de wallet con token guardado:', walletError);
+                            
+                            // Intentar obtener balance actualizado
+                            try {
+                                const walletInfo = await PaymentSystem.getWalletInfo(retryAuth.accessToken);
+                                if (balanceDisplay && walletInfo && walletInfo.balance) {
+                                    balanceDisplay.textContent = walletInfo.balance;
+                                    userData.balance = walletInfo.balance;
+                                    localStorage.setItem('piUserData', JSON.stringify(userData));
+                                }
+                            } catch (walletError) {
+                                console.warn('Error al obtener información de wallet con token en reintento:', walletError);
+                            }
+                            
+                            updateUserInterface();
+                            return retryAuth;
+                        } else {
+                            throw new Error('Reintento de autenticación falló o datos incompletos');
+                        }
+                    } catch (retryError) {
+                        console.error('Error en reintento de autenticación:', retryError);
+                        console.log('Continuando con datos de sesión existentes...');
+                        
+                        // Usar los datos existentes como último recurso
+                        if (usernameDisplay && userData.username) {
+                            usernameDisplay.textContent = userData.username;
+                            usernameDisplay.dataset.usernameLocked = 'true';
+                        }
+                        
+                        if (balanceDisplay) {
+                            if (userData.balance) {
+                                balanceDisplay.textContent = userData.balance;
+                            } else {
+                                // Intentar obtener balance si no está guardado
+                                try {
+                                    const walletInfo = await PaymentSystem.getWalletInfo(userData.accessToken);
+                                    if (walletInfo && walletInfo.balance) {
+                                        balanceDisplay.textContent = walletInfo.balance;
+                                        
+                                        // Actualizar localStorage con el balance
+                                        userData.balance = walletInfo.balance;
+                                        localStorage.setItem('piUserData', JSON.stringify(userData));
+                                    }
+                                } catch (walletError) {
+                                    console.warn('Error al obtener información de wallet con token guardado:', walletError);
+                                }
+                            }
                         }
                     }
+                } else {
+                    console.warn('No hay datos de sesión válidos, se usará usuario por defecto');
                 }
             }
             
@@ -527,8 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 1000);
             }
             
-            // Todo listo para iniciar el juego
-            
+            // Todo listo para iniciar el juego, intentar establecer nombre de usuario
             // SOLUCIÓN PARA DOBLE AUTENTICACIÓN: Usar nombre guardado o intentar varias fuentes
             console.log('Estableciendo nombre de usuario de manera confiable:');
             
@@ -543,10 +623,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Guardar en almacenamiento
                     try {
-                        const userData = {
-                            username: savedUsername,
-                            accessToken: auth ? auth.accessToken : null
-                        };
+                        const userData = JSON.parse(localStorage.getItem('piUserData') || '{}');
+                        userData.username = savedUsername;
                         localStorage.setItem('piUserData', JSON.stringify(userData));
                         sessionStorage.setItem('piUserData', JSON.stringify(userData));
                         console.log('Datos de usuario guardados con nombre de primera autenticación');
