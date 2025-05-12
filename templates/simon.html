@@ -6,9 +6,16 @@
     <title>Simon Dice - Pi Network</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Fuentes retro -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <!-- Estilos originales -->
     <link href="/static/css/simon.css" rel="stylesheet">
     <link href="/static/css/scoreboard.css" rel="stylesheet">
     <link href="/static/css/payment-counter.css" rel="stylesheet">
+    <!-- Nuevo estilo retro -->
+    <link href="/static/css/retro-nav.css" rel="stylesheet">
+    <!-- Ajustes específicos -->
+    <link href="/static/css/simon-adjust.css" rel="stylesheet">
 </head>
 <body>
     <!-- Partículas de fondo -->
@@ -31,7 +38,9 @@
             </button>
         </div>
 
-        <div class="game-container">
+        <!-- SECCIÓN PRINCIPAL: JUEGO SIMON -->
+        <div id="main-section" class="retro-section active">
+            <!-- Contenedor del juego centrado -->
             <div class="simon-container">
                 <div class="simon-board" id="simon-board">
                     <div class="simon-button green" id="green"></div>
@@ -39,24 +48,77 @@
                     <div class="simon-button yellow" id="yellow"></div>
                     <div class="simon-button blue" id="blue"></div>
                     <div class="simon-controls">
-                        <div class="controls-title">SIMON</div>
                         <div class="score-display" id="score">0</div>
                         <button class="start-button" id="start-button">INICIO</button>
                     </div>
                 </div>
             </div>
             
+           <!-- Instrucciones del juego centradas -->
             <div class="game-info">
                 <h5><i class="fas fa-gamepad"></i> Cómo jugar</h5>
                 <ol>
+                    <li>Paga <strong>0.20 Pi</strong> para iniciar una partida</li>
                     <li>Presiona el botón <strong>INICIO</strong> para comenzar</li>
                     <li>Observa la secuencia de colores que se iluminan</li>
                     <li>Repite la secuencia haciendo clic en los colores en el mismo orden</li>
                     <li>Por cada secuencia correcta, ganarás puntos</li>
                     <li>El juego se vuelve más difícil a medida que avanzas</li>
+                    <li>De los 0.20 Pi de cada partida, <strong>0.10 Pi</strong> van al bote</li>
+                    <li>El bote se reparte mensualmente entre los <a href="#" id="show-distribution" style="color: #8e44ad; text-decoration: underline;"><strong>10 mejores</strong></a> jugadores</li>
                 </ol>
             </div>
+
+        <!-- Popup modal para la distribución del bote (oculto por defecto) -->
+        <div id="distribution-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+            <div style="background-color: #000; border: 3px solid #5c3294; border-radius: 10px; padding: 20px; width: 300px; max-width: 90%; font-family: 'Press Start 2P', monospace; color: #fff; position: relative;">
+                <button id="close-modal" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: #f44336; font-size: 20px; cursor: pointer; font-family: monospace;">&times;</button>
+                <h4 style="color: #8e44ad; text-align: center; margin-bottom: 15px; font-size: 16px;">Distribución del Bote</h4>
+                <div style="color: #0f0; font-family: 'VT323', monospace; font-size: 16px; line-height: 1.6;">
+                    <div>1º: <span style="color: #ffeb3b;">25%</span> del bote</div>
+                    <div>2º: <span style="color: #ffeb3b;">15%</span> del bote</div>
+                    <div>3º: <span style="color: #ffeb3b;">12%</span> del bote</div>
+                    <div>4º: <span style="color: #ffeb3b;">10%</span> del bote</div>
+                    <div>5º: <span style="color: #ffeb3b;">9%</span> del bote</div>
+                    <div>6º: <span style="color: #ffeb3b;">8%</span> del bote</div>
+                    <div>7º: <span style="color: #ffeb3b;">7%</span> del bote</div>
+                    <div>8º: <span style="color: #ffeb3b;">6%</span> del bote</div>
+                    <div>9º: <span style="color: #ffeb3b;">5%</span> del bote</div>
+                    <div>10º: <span style="color: #ffeb3b;">3%</span> del bote</div>
+                </div>
+            </div>
+        </div>
+
+            <!-- JavaScript para controlar el popup -->
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const showDistributionLink = document.getElementById('show-distribution');
+                    const distributionModal = document.getElementById('distribution-modal');
+                    const closeModalButton = document.getElementById('close-modal');
+                    
+                    if (showDistributionLink && distributionModal && closeModalButton) {
+                        // Mostrar el modal al hacer clic en el enlace
+                        showDistributionLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            distributionModal.style.display = 'flex';
+                        });
+                        
+                        // Cerrar el modal al hacer clic en el botón de cerrar
+                        closeModalButton.addEventListener('click', function() {
+                            distributionModal.style.display = 'none';
+                        });
+                        
+                        // Cerrar el modal al hacer clic fuera del contenido
+                        distributionModal.addEventListener('click', function(e) {
+                            if (e.target === distributionModal) {
+                                distributionModal.style.display = 'none';
+                            }
+                        });
+                    }
+                });
+            </script>
             
+            <!-- Botones principales centrados -->
             <div class="action-buttons">
                 <button id="logout-button" class="btn btn-warning">
                     <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
@@ -66,7 +128,8 @@
                 </button>
             </div>
             
-            <div id="paymentResult" style="display: none;">
+            <!-- Resultado del pago centrado -->
+            <div id="paymentResult" style="display: none; margin: 10px auto; max-width: 550px;">
                 <div class="alert-info">
                     <h6><i class="fas fa-info-circle"></i> Estado del pago: <span id="paymentStatus"></span></h6>
                     <h6><i class="fas fa-receipt"></i> ID de transacción: <span id="txid"></span></h6>
@@ -80,22 +143,101 @@
                 </button>
             </div>
             
-            <!-- Tabla de puntuaciones -->
+            <!-- Botones de navegación retro en la parte inferior -->
+            <div class="bottom-nav-buttons">
+                <button id="scores-button" class="bottom-nav-button">
+                    <i class="fas fa-trophy"></i> Clasificación
+                </button>
+                <button id="funds-button" class="bottom-nav-button">
+                    <i class="fas fa-coins"></i> Fondos
+                </button>
+            </div>
+        </div>
+        
+        <!-- SECCIÓN DE PUNTUACIONES -->
+        <div id="scores-section" class="retro-section">
+            <!-- Encabezado de sección -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <button class="retro-nav-button back-button">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </button>
+                <h3 class="retro-section-title">Clasificación</h3>
+                <div style="width: 100px;"></div> <!-- Espaciador para centrar el título -->
+            </div>
+            
+            <!-- Tabla de clasificación retro -->
+            <div class="scoreboard-retro">
+                <div class="scoreboard-retro-title">Mejores puntuaciones</div>
+                <table class="scoreboard-retro-table" id="retro-scoreboard">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Puntos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Se llenará dinámicamente con JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Botón para reiniciar puntuaciones -->
+            <button id="reset-scores-button" class="retro-aux-button">
+                <i class="fas fa-trash-alt"></i> Reiniciar Puntuaciones Locales
+            </button>
+        </div>
+        
+        <!-- SECCIÓN DE FONDOS DE TRANSFERENCIAS -->
+        <div id="funds-section" class="retro-section">
+            <!-- Encabezado de sección -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <button class="retro-nav-button back-button">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </button>
+                <h3 class="retro-section-title">Fondos</h3>
+                <div style="width: 100px;"></div> <!-- Espaciador para centrar el título -->
+            </div>
+            
+            <!-- Contador Retro de Pi -->
+            <div class="retro-counter">
+                <div class="retro-counter-title">Fondo para Transferencias</div>
+                <div class="retro-display">
+                    <div class="retro-digit" id="amount-digit-1">0</div>
+                    <div class="retro-digit">.</div>
+                    <div class="retro-digit" id="amount-digit-2">3</div>
+                    <div class="retro-digit" id="amount-digit-3">0</div>
+                    <div class="pi-logo">π</div>
+                </div>
+                <div class="retro-label">Cantidad Acumulada</div>
+                
+                <div class="retro-display">
+                    <div class="retro-digit" id="payments-digit">3</div>
+                </div>
+                <div class="retro-label">Pagos Recibidos</div>
+                
+                <div class="retro-display" style="font-size: 14px; color: #ff0;">
+                    <div class="retro-digit" id="update-date" style="font-size: 14px;">11/05/2025</div>
+                </div>
+                <div class="retro-label">Última Actualización</div>
+                
+                <div class="counter-note">
+                    Por cada pago de 0.20 Pi, 0.10 Pi va a la wallet principal y 0.10 Pi se añade a este fondo para transferencia manual posterior.
+                </div>
+            </div>
+        </div>
+        
+        <!-- Elementos originales (ocultos) necesarios para JS -->
+        <div style="display: none;">
+            <!-- Tabla de puntuaciones original (oculta) -->
             <div class="scoreboard-container">
                 <div id="user-best-score"></div>
                 <div id="scoreboard" class="scoreboard">
                     <!-- La tabla de puntuaciones se generará aquí -->
                 </div>
-                <div class="scoreboard-actions mt-2">
-                    <button id="reset-scores-button" class="btn btn-sm btn-outline-warning">
-                        <i class="fas fa-trash-alt"></i> Reiniciar Puntuaciones Locales
-                    </button>
-                </div>
             </div>
             
-            <!-- Contador de Pagos -->
+            <!-- Contador de Pagos original (oculto) -->
             <div id="payment-counter" class="payment-counter">
-                <h4><i class="fas fa-coins"></i> Fondo para Transferencias</h4>
                 <div class="payment-counter-data">
                     <div class="counter-item">
                         <div class="label">Cantidad acumulada</div>
@@ -110,9 +252,6 @@
                         <div class="value">--</div>
                     </div>
                 </div>
-                <div class="counter-note">
-                    Por cada pago de 0.20 Pi, 0.10 Pi va a la wallet principal y 0.10 Pi se añade a este fondo para transferencia manual posterior.
-                </div>
             </div>
         </div>
     </div>
@@ -120,27 +259,18 @@
     <!-- SDK de Pi Network -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- Particles Effects -->
+    <!-- Scripts originales -->
     <script src="/static/js/particle-effects.js"></script>
-    
-    <!-- Fondo animado con partículas -->
     <script src="/static/js/particle-background.js"></script>
-    
-    <!-- Sistema de Pagos Pi Network -->
     <script src="/static/js/payments.js"></script>
     <script src="/static/js/payments.checkpendingpayments.js"></script>
-    
-    <!-- Sistema de audio con variación de tono -->
     <script src="/static/js/audio/SoundManager.js"></script>
-    
-    <!-- Script actualizado para el juego Simon -->
     <script src="/static/js/simon.js"></script>
-    
-    <!-- Sistema de puntuaciones -->
     <script src="/static/js/scoreboard.js"></script>
-    
-    <!-- Sistema de contador de pagos -->
     <script src="/static/js/payment-counter.js"></script>
+    
+    <!-- Sistema de navegación retro -->
+    <script src="/static/js/retro-nav.js"></script>
     
     <!-- Script adicional para asegurar que se muestre el nombre de usuario -->
     <script>
@@ -167,6 +297,17 @@
                         // En caso de error, establecer un valor predeterminado
                         usernameDisplay.textContent = 'Pioneer';
                         console.log('Error en script de respaldo, nombre establecido como Pioneer');
+                    }
+                }
+                
+                // Establecer contador de registros
+                var recordsDisplay = document.getElementById('records-display');
+                if (recordsDisplay) {
+                    try {
+                        var simonScores = JSON.parse(localStorage.getItem('simonScores') || '[]');
+                        recordsDisplay.textContent = simonScores.length || 0;
+                    } catch (e) {
+                        recordsDisplay.textContent = 0;
                     }
                 }
             }, 3000); // Verificar después de 3 segundos
@@ -263,6 +404,15 @@
             } catch (e) {
                 // Tercera opción si todo falla: recargar con parámetro especial
                 window.location.href = window.location.pathname + '?force_cancel=true';
+            }
+        });
+        
+        // Establecer botón de reinicio de puntuaciones
+        document.getElementById('reset-scores-button').addEventListener('click', function() {
+            if (confirm('¿Estás seguro de que deseas reiniciar todas tus puntuaciones locales?')) {
+                localStorage.removeItem('simonScores');
+                alert('Puntuaciones reiniciadas. La página se recargará para aplicar los cambios.');
+                location.reload();
             }
         });
     </script>
