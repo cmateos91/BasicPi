@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Ruta al archivo JSON que almacenará el contador
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+DATA_DIR = '/tmp'
 os.makedirs(DATA_DIR, exist_ok=True)  # ✅ ahora sí es válido en Vercel
 COUNTER_FILE = os.path.join(DATA_DIR, 'counter.json')
 

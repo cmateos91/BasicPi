@@ -9,10 +9,10 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Configurar headers para la API de Pi Network
-api_key = os.getenv('PI_API_KEY')
+api_key = os.getenv('PI_API_KEY', None)
 if not api_key:
-    logger.error('PI_API_KEY not found in environment variables')
-    raise ValueError('PI_API_KEY must be set in environment variables')
+    logger.warning('PI_API_KEY is missing, limited mode enabled.')
+
 
 server_header = {
     'Authorization': f'Key {api_key}'
