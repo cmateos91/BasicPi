@@ -21,6 +21,5 @@
         { "key": "Access-Control-Allow-Headers", "value": "X-Requested-With, Content-Type, Accept" }
       ]
     }
-  ],
-  "pythonVersion": "3.9"
+  ]
 }
