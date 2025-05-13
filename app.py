@@ -488,70 +488,62 @@ def get_user_transactions():
 @app.route('/api/scores/record', methods=['POST'])
 def record_score():
     try:
-        # Obtener el access token desde el frontend
-        access_token = request.json.get('accessToken')
+        # Obtener datos del score y usuario
+        username = request.json.get('username')
         score = request.json.get('score')
         level = request.json.get('level')
         payment_id = request.json.get('paymentId')
-
-        if not access_token or score is None or level is None:
-            logger.error('Missing accessToken, score, or level')
-            return jsonify({'error': 'Missing accessToken, score, or level'}), 400
-
-        # Validar el access token con el endpoint /me
-        user_header = {'Authorization': f'Bearer {access_token}'}
-        response = requests.get("https://api.minepi.com/v2/me", headers=user_header)
-        if response.status_code != 200:
-            logger.error('Invalid access token')
-            return jsonify({'error': 'Invalid access token'}), 401
-
-        user_info = response.json().get('user')
-        username = user_info.get('username')
-        uid = user_info.get('uid')
-
-        logger.info(f'Recording score for verified user {username} ({uid}): {score} at level {level}')
-
-        # Abrir o crear archivo JSON para almacenar puntuaciones
+        
+        if not username or score is None or level is None:
+            logger.error('Missing required score data')
+            return jsonify({'error': 'Missing required score data'}), 400
+        
+        logger.info(f'Recording score for {username}: {score} at level {level}')
+        
+        # Abrir o crear un archivo JSON para almacenar puntuaciones
         scores_file = os.path.join(app.root_path, 'data', 'scores.json')
+        
+        # Crear directorio si no existe
         os.makedirs(os.path.dirname(scores_file), exist_ok=True)
-
-        # Leer puntuaciones existentes
+        
+        # Leer puntuaciones existentes si el archivo existe
         if os.path.exists(scores_file):
             with open(scores_file, 'r') as f:
                 try:
                     scores = json.load(f)
                 except json.JSONDecodeError:
+                    # Si el archivo está corrupto, crear lista vacía
                     scores = []
         else:
+            # No hay archivo de puntuaciones, inicializar con lista vacía
             scores = []
-
-        # Crear objeto de puntuación seguro usando uid y username validados
+        
+        # Crear objeto de puntuación
         score_obj = {
             'username': username,
-            'uid': uid,
             'score': score,
             'level': level,
             'timestamp': int(time.time() * 1000),
             'paymentId': payment_id,
             'blockchain': request.json.get('blockchain', False)
         }
-
+        
+        # Añadir a la lista de puntuaciones
         scores.append(score_obj)
-
-        # Guardar puntuaciones
+        
+        # Guardar puntuaciones actualizadas
         with open(scores_file, 'w') as f:
             json.dump(scores, f)
-
+        
         return jsonify({
             'status': 'success',
             'message': 'Score recorded successfully',
             'data': score_obj
         })
-
+    
     except Exception as e:
         logger.error(f'Error recording score: {str(e)}')
         return jsonify({'error': f'Error recording score: {str(e)}'}), 500
-
 
 @app.route('/api/scores', methods=['GET'])
 def get_scores():
