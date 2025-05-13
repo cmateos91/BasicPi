@@ -18,7 +18,22 @@ load_dotenv()
 
 # Ruta al archivo JSON que almacenará el contador
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
-COUNTER_FILE = os.path.join(DATA_DIR, 'payment_counter.json')
+os.makedirs(DATA_DIR, exist_ok=True)  # ✅ ahora sí es válido en Vercel
+COUNTER_FILE = os.path.join(DATA_DIR, 'counter.json')
+
+def get_counter_summary():
+    if os.path.exists(COUNTER_FILE):
+        with open(COUNTER_FILE, 'r') as f:
+            return json.load(f)
+    return {'accumulated_amount': 0, 'payments_count': 0}
+
+def add_to_counter(amount, payment_id, user_id, username):
+    summary = get_counter_summary()
+    summary['accumulated_amount'] += amount
+    summary['payments_count'] += 1
+    with open(COUNTER_FILE, 'w') as f:
+        json.dump(summary, f)
+    return summary
 
 # Asegurarse de que el directorio de datos existe
 os.makedirs(DATA_DIR, exist_ok=True)

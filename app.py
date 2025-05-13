@@ -501,7 +501,7 @@ def record_score():
         logger.info(f'Recording score for {username}: {score} at level {level}')
         
         # Abrir o crear un archivo JSON para almacenar puntuaciones
-        scores_file = os.path.join(app.root_path, 'data', 'scores.json')
+        scores_file = '/tmp/scores.json'
         
         # Crear directorio si no existe
         os.makedirs(os.path.dirname(scores_file), exist_ok=True)
@@ -550,13 +550,10 @@ def get_scores():
     try:
         # Obtener el nombre de usuario desde el query parameter (opcional)
         username_filter = request.args.get('username', None)
-        
-        # Abrir o crear un archivo JSON para almacenar puntuaciones
-        scores_file = os.path.join(app.root_path, 'data', 'scores.json')
-        
-        # Crear directorio si no existe
-        os.makedirs(os.path.dirname(scores_file), exist_ok=True)
-        
+
+        # Cambiar la ruta del archivo a /tmp (espacio de escritura permitido en Vercel)
+        scores_file = '/tmp/scores.json'
+
         # Leer puntuaciones del archivo JSON si existe
         if os.path.exists(scores_file):
             with open(scores_file, 'r') as f:
@@ -568,19 +565,20 @@ def get_scores():
         else:
             # No hay archivo de puntuaciones, inicializar con lista vacía
             scores = []
-        
+
         # Filtrar por nombre de usuario si se proporciona
         if username_filter:
             scores = [score for score in scores if score.get('username') == username_filter]
-        
+
         # Ordenar por puntuación (de mayor a menor)
         scores.sort(key=lambda x: x.get('score', 0), reverse=True)
-        
+
         return jsonify(scores)
-    
+
     except Exception as e:
         logger.error(f'Error getting scores: {str(e)}')
         return jsonify({'error': f'Error getting scores: {str(e)}'}), 500
+
 
 if __name__ == '__main__':
     logger.info('Starting Pi Network Basic App')
